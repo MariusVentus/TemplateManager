@@ -1,32 +1,40 @@
 #include <windows.h>
 #include <string>
+#include "SettingsHandler.h"
 
 #define IDC_MAIN_EDIT 101
 #define ID_FILE_EXIT 9001
 #define ID_ABOUT 9002
 #define ID_HELP 9003
+#define ID_OPEN_SETTINGS 9005
+#define ID_ADDREMOVE_TEMPLATES 9006
 #define ID_IN_PROGRESS 9020
 #define ID_TEMPBASE 9050 //Nothing above this.
 
 
 //Global Entities
+HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
 const char g_WindowTitle[] = "Template Manager V0.0.0";
 const unsigned g_templateCount = 10;
 HWND hTemplates[g_templateCount] = { 0 };
 unsigned g_LastCreatedY = 15;
+SettingsHandler g_Settings;
+HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 
 //Forward Declarations
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void AddMenu(HWND hwnd);
 void AddControls(HWND hwnd);
+void RegisterSettingsWindow(HINSTANCE hInst);
+void OpenSettingsWindow(HWND hWnd);
+LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
 	WNDCLASSEX wc;
-	HWND hMainWindow = { 0 };
 	MSG Msg;
 
 	wc.cbSize = sizeof(WNDCLASSEX);
@@ -35,12 +43,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
 	wc.hInstance = hInstance;
-	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wc.hbrBackground = CreateSolidBrush(RGB(1, 22, 53));
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = g_szClassName;
-	wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+	wc.hIconSm = (HICON)LoadImage(hInstance, "Resources\\TM Logo.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+	wc.hIcon = (HICON)LoadImage(hInstance, "Resources\\TM Logo.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
 
 	if (!RegisterClassEx(&wc))
 	{
@@ -48,6 +56,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			MB_ICONEXCLAMATION | MB_OK);
 		return 0;
 	}
+
+	RegisterSettingsWindow(hInstance);
 
 	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
 		CW_USEDEFAULT, CW_USEDEFAULT, 350, 600, NULL, NULL, hInstance, NULL);
@@ -89,6 +99,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else if (wParam == ID_HELP) {
 			MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
 		}
+		else if (wParam == ID_OPEN_SETTINGS) {
+			OpenSettingsWindow(hwnd);
+		}
+		else if (wParam == ID_ADDREMOVE_TEMPLATES) {
+			if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\n\nAre you sure your want to enter?", L"Warning",
+				MB_OKCANCEL | MB_ICONERROR) == IDOK) {
+				ShellExecute(hwnd, "open", "Templates\\Templates.txt", NULL, NULL, SW_SHOW);
+			}
+		}
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
 		}
@@ -120,7 +139,8 @@ void AddMenu(HWND hwnd)
 	hMenu = CreateMenu();
 	//File Menu
 	hFileMenu = CreatePopupMenu();
-	AppendMenu(hFileMenu, MF_STRING, ID_IN_PROGRESS, "Add and Remove Templates");
+	AppendMenu(hFileMenu, MF_STRING, ID_ADDREMOVE_TEMPLATES, "Add and Remove Templates");
+	AppendMenu(hFileMenu, MF_STRING, ID_OPEN_SETTINGS, "Settings");
 	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(hFileMenu, MF_STRING, ID_FILE_EXIT, "Exit");
 	AppendMenu(hMenu, MF_STRING | MF_POPUP, (UINT)hFileMenu, "File");
@@ -155,4 +175,112 @@ void AddControls(HWND hwnd)
 			15, g_LastCreatedY, 285, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
+}
+
+void RegisterSettingsWindow(HINSTANCE hInst) {
+	WNDCLASSEX setWin = { 0 };
+
+	setWin.cbSize = sizeof(WNDCLASSEX);
+	setWin.style = 0;
+	setWin.lpfnWndProc = SetWinProc;
+	setWin.cbClsExtra = 0;
+	setWin.cbWndExtra = 0;
+	setWin.hInstance = hInst;
+	setWin.hCursor = LoadCursor(NULL, IDC_ARROW);
+	setWin.hbrBackground = (HBRUSH)COLOR_WINDOW;
+	setWin.lpszMenuName = NULL;
+	setWin.lpszClassName = "mySettingsWindow";
+	setWin.hIconSm = (HICON)LoadImage(hInst, "Resources\\TM Logo.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+
+	RegisterClassEx(&setWin);
+}
+
+void OpenSettingsWindow(HWND hWnd) {
+	HWND hSetWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "mySettingsWindow", "Settings", WS_VISIBLE | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 300, 400, hWnd, NULL, NULL, NULL);
+	if (hSetWindow == NULL)
+	{
+		MessageBox(NULL, "Window Creation Failed!", "Error!",
+			MB_ICONEXCLAMATION | MB_OK);
+	}
+
+	CreateWindowEx(NULL, "STATIC", "Name", WS_CHILD | WS_VISIBLE, 
+		20, 10, 200, 25, hSetWindow, NULL, GetModuleHandle(NULL), NULL);
+	hName = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", g_Settings.GetName().c_str(), WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 35, 200, 25, hSetWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+	
+	CreateWindowEx(NULL, "STATIC", "Email", WS_CHILD | WS_VISIBLE,
+		20, 60, 200, 25, hSetWindow, NULL, GetModuleHandle(NULL), NULL);
+	hEmail = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", g_Settings.GetEmail().c_str(), WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 85, 200, 25, hSetWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+	
+	CreateWindowEx(NULL, "STATIC", "Miscellaneous", WS_CHILD | WS_VISIBLE,
+		20, 110, 200, 25, hSetWindow, NULL, GetModuleHandle(NULL), NULL);
+	hMisc1 = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", g_Settings.GetMisc1().c_str(), WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 135, 200, 25, hSetWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+	
+	CreateWindowEx(NULL, "STATIC", "Miscellaneous", WS_CHILD | WS_VISIBLE,
+		20, 160, 200, 25, hSetWindow, NULL, GetModuleHandle(NULL), NULL);
+	hMisc2 = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", g_Settings.GetMisc2().c_str(), WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 185, 200, 25, hSetWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+	
+	CreateWindowEx(NULL, "STATIC", "Miscellaneous", WS_CHILD | WS_VISIBLE,
+		20, 210, 200, 25, hSetWindow, NULL, GetModuleHandle(NULL), NULL);
+	hMisc3 = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", g_Settings.GetMisc3().c_str(), WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 235, 200, 25, hSetWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+
+
+
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Ok", WS_VISIBLE | WS_CHILD, 25, 300, 100, 40, hSetWindow, (HMENU)IDOK, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Cancel", WS_VISIBLE | WS_CHILD, 150, 300, 100, 40, hSetWindow, (HMENU)IDCANCEL, NULL, NULL);
+
+	//Disable the main window, turning a Modless dialogue box into a modal dialogue
+	EnableWindow(hWnd, false);
+}
+
+
+LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
+	switch (msg) {
+	case WM_COMMAND:
+		switch (wp)
+		{
+		case IDCANCEL:
+			EnableWindow(hMainWindow, true);
+			DestroyWindow(hWnd);
+			break;
+		case IDOK:
+			//Input
+			char setName[100] = "";
+			GetWindowText(hName, setName, 100);
+			g_Settings.SetName(setName);
+			//
+			char setEmail[100] = "";
+			GetWindowText(hEmail, setEmail, 100);
+			g_Settings.SetEmail(setEmail);
+			//
+			char setMisc1[100] = "";
+			GetWindowText(hMisc1, setMisc1, 100);
+			g_Settings.SetMisc1(setMisc1);
+			//
+			char setMisc2[100] = "";
+			GetWindowText(hMisc2, setMisc2, 100);
+			g_Settings.SetMisc2(setMisc2);
+			//
+			char setMisc3[100] = "";
+			GetWindowText(hMisc3, setMisc3, 100);
+			g_Settings.SetMisc3(setMisc3);
+			//Save
+			g_Settings.SaveSettingsToFile();
+			EnableWindow(hMainWindow, true);
+			DestroyWindow(hWnd);
+			break;
+		}
+		break;
+	case WM_CLOSE:
+		EnableWindow(hMainWindow, true);
+		DestroyWindow(hWnd);
+		break;
+	default:
+		return DefWindowProc(hWnd, msg, wp, lp);
+	}
+	return 0;
 }

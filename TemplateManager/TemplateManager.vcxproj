@@ -126,9 +126,25 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="SettingsHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\TM Logo.bmp" />
+    <Image Include="Resources\TM Logo.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Settings\Settings.txt" />
+    <Text Include="Templates\Templates.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="SettingsHandler.h" />
+    <ClInclude Include="TemplateHandler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
