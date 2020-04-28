@@ -1,10 +1,12 @@
 #include <windows.h>
+#include <string>
 
 #define IDC_MAIN_EDIT 101
 #define ID_FILE_EXIT 9001
 #define ID_ABOUT 9002
 #define ID_HELP 9003
 #define ID_IN_PROGRESS 9020
+#define ID_TEMPBASE 9050 //Nothing above this.
 
 
 //Global Entities
@@ -78,18 +80,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		AddControls(hwnd);
 		break;
 	case WM_COMMAND:
-		switch (wParam)
-		{
-		case ID_FILE_EXIT:
-			PostQuitMessage(0);
-			break;
-		case ID_ABOUT:
-			MessageBox(NULL, "Just a quick template manager to copy templates on a button press.\n\n-Marius Ventus", "About", MB_OK | MB_ICONINFORMATION);
-			break;
-		case ID_HELP:
-			MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
-			break;
+		if (wParam == ID_FILE_EXIT) { 
+			PostQuitMessage(0); 
 		}
+		else if (wParam == ID_ABOUT) {
+			MessageBox(NULL, "Just a quick template manager to copy templates on a button press.\n\n-Marius Ventus", "About", MB_OK | MB_ICONINFORMATION);
+		}
+		else if (wParam == ID_HELP) {
+			MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
+		}
+		else if (wParam == ID_IN_PROGRESS) {
+			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
+		}
+		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_templateCount) {
+			unsigned temp = wParam - ID_TEMPBASE;
+			std::string tempS = "I am Template ";
+			tempS.append(std::to_string(temp));
+			MessageBox(NULL, tempS.c_str(), "Test", MB_OK | MB_ICONEXCLAMATION);
+		}
+		break;
+	case WM_MOUSEWHEEL:
+		//MessageBox(NULL, "Wheel", "Wheel", MB_OK | MB_ICONEXCLAMATION);
 		break;
 	case WM_CLOSE:
 		DestroyWindow(hwnd);
@@ -123,9 +134,25 @@ void AddMenu(HWND hwnd)
 
 void AddControls(HWND hwnd)
 {
+	//HWND hInterior; Was going to try making the Template buttons show up in a scrollable box, but graphics issues insued. Will come back to this. 
+
+	//hInterior = CreateWindowEx(WS_EX_CLIENTEDGE, "Edit", "",
+	//	WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL,
+	//	0, 0, 350, 500, hwnd, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+	//std::string holding;
+	//for (unsigned i = 0; i < g_templateCount; i++) {
+	//	holding.append("\r\n");
+	//	holding.append("\r\n");
+	//	holding.append("\r\n");
+	//	holding.append("\r\n");
+	//	holding.append("\r\n");
+	//	holding.append("\r\n");
+	//}
+	//SetWindowText(hInterior, holding.c_str());
+
 	for (unsigned i = 0; i < g_templateCount; i++) {
 		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", "Template", WS_CHILD | WS_VISIBLE,
-			15, g_LastCreatedY, 285, 40, hwnd, NULL, GetModuleHandle(NULL), NULL);
+			15, g_LastCreatedY, 285, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
 }
