@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <string>
 #include "SettingsHandler.h"
+#include "TimeClock.h"
+#include "TemplateHandler.h"
 
 #define IDC_MAIN_EDIT 101
 #define ID_FILE_EXIT 9001
@@ -15,12 +17,14 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.0";
+const char g_WindowTitle[] = "Template Manager V0.0.1";
 const unsigned g_templateCount = 10;
 HWND hTemplates[g_templateCount] = { 0 };
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
+TimeClock g_Timer;
+TemplateManager g_Templates(g_Settings, g_Timer);
 
 //Forward Declarations
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -103,19 +107,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			OpenSettingsWindow(hwnd);
 		}
 		else if (wParam == ID_ADDREMOVE_TEMPLATES) {
-			if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\n\nAre you sure your want to enter?", L"Warning",
+			if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\nA app restart is required to populate changes.\n\nAre you sure your want to enter?", L"Warning",
 				MB_OKCANCEL | MB_ICONERROR) == IDOK) {
-				ShellExecute(hwnd, "open", "Templates\\Templates.txt", NULL, NULL, SW_SHOW);
+				ShellExecute(hwnd, "open", g_Templates.GetTemplateFileLoc().c_str(), NULL, NULL, SW_SHOW);
 			}
 		}
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
 		}
 		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_templateCount) {
-			unsigned temp = wParam - ID_TEMPBASE;
-			std::string tempS = "I am Template ";
-			tempS.append(std::to_string(temp));
-			MessageBox(NULL, tempS.c_str(), "Test", MB_OK | MB_ICONEXCLAMATION);
+			unsigned butNum = wParam - ID_TEMPBASE;
+			std::string stringNote = g_Templates.GetTemplateXContent(butNum);
+			//Copy to Clipboard
+			OpenClipboard(hwnd);
+			EmptyClipboard();
+			HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, stringNote.size() + 1);
+			if (!hg) {
+				CloseClipboard();
+			}
+			else {
+				memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
+				GlobalUnlock(hg);
+				SetClipboardData(CF_TEXT, hg);
+				CloseClipboard();
+			}
+			GlobalFree(hg);
 		}
 		break;
 	case WM_MOUSEWHEEL:
@@ -170,8 +186,8 @@ void AddControls(HWND hwnd)
 	//}
 	//SetWindowText(hInterior, holding.c_str());
 
-	for (unsigned i = 0; i < g_templateCount; i++) {
-		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", "Template", WS_CHILD | WS_VISIBLE,
+	for (unsigned i = 0; i < g_templateCount && i < g_Templates.GetTemplateCount() - 1; i++) {
+		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
 			15, g_LastCreatedY, 285, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}

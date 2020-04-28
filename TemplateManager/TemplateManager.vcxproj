@@ -126,7 +126,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="RandHandler.cpp" />
     <ClCompile Include="SettingsHandler.cpp" />
+    <ClCompile Include="TemplateHandler.cpp" />
+    <ClCompile Include="TimeClock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
@@ -143,8 +146,10 @@
     <Text Include="Templates\Templates.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="RandHandler.h" />
     <ClInclude Include="SettingsHandler.h" />
     <ClInclude Include="TemplateHandler.h" />
+    <ClInclude Include="TimeClock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
