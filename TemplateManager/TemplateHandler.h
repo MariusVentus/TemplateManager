@@ -20,6 +20,7 @@ private:
 	const std::string m_TemplateFile = "Templates\\Templates.txt";
 	const SettingsHandler& m_Settings;
 	const TimeClock& m_Timer;
+	TimeClock m_LocalClock;
 	RandHandler m_Rand;
 
 	struct Templates {

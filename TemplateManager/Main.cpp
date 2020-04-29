@@ -17,14 +17,13 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.1";
-const unsigned g_templateCount = 10;
-HWND hTemplates[g_templateCount] = { 0 };
+const char g_WindowTitle[] = "Template Manager V0.0.2";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 TimeClock g_Timer;
 TemplateManager g_Templates(g_Settings, g_Timer);
+std::vector<HWND> hTemplates;
 
 //Forward Declarations
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -63,8 +62,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	RegisterSettingsWindow(hInstance);
 
+	unsigned approxWinHeight = ((g_Templates.GetTemplateCount()+1) * 50)+30;
+	if (approxWinHeight > 800) {
+		approxWinHeight = 800;
+	}
+
 	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
-		CW_USEDEFAULT, CW_USEDEFAULT, 350, 600, NULL, NULL, hInstance, NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
 
 	if (hMainWindow == NULL)
 	{
@@ -115,7 +119,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
 		}
-		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_templateCount) {
+		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_Templates.GetTemplateCount()) {
 			unsigned butNum = wParam - ID_TEMPBASE;
 			std::string stringNote = g_Templates.GetTemplateXContent(butNum);
 			//Copy to Clipboard
@@ -186,7 +190,11 @@ void AddControls(HWND hwnd)
 	//}
 	//SetWindowText(hInterior, holding.c_str());
 
-	for (unsigned i = 0; i < g_templateCount && i < g_Templates.GetTemplateCount() - 1; i++) {
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+		hTemplates.push_back({ 0 });
+	}
+
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
 			15, g_LastCreatedY, 285, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;

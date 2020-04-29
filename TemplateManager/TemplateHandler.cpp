@@ -65,7 +65,7 @@ void TemplateManager::RefreshTemplates(void)
 				if (token.find("[Template]") == std::string::npos) {
 					tempTitle = token;
 				}
-				while (token.find("[Template]") == std::string::npos) {
+				while (token.find("[Template]") == std::string::npos && !in.eof()) {
 					token.clear();
 					std::getline(in, token);
 					if (token.find("[Template]") == std::string::npos) {
@@ -89,14 +89,8 @@ void TemplateManager::RefreshTemplates(void)
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
 	std::string localContent = m_Templates[inX].m_Content;
-	std::string flags[7] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]" };
+	std::string flags[8] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]","[Time]" };
 	//Content Flags
-	while (localContent.find(flags[0]) != std::string::npos) {
-		localContent.replace(localContent.find(flags[0]), flags[0].size(), m_Timer.GetDate());
-	}
-	while (localContent.find(flags[1]) != std::string::npos) {
-		localContent.replace(localContent.find(flags[1]), flags[1].size(), std::to_string(m_Rand.Generate(0, 100)));
-	}
 	while (localContent.find(flags[2]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[2]), flags[2].size(), m_Settings.GetName());
 	}
@@ -108,9 +102,20 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	}
 	while (localContent.find(flags[5]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[5]), flags[5].size(), m_Settings.GetMisc2());
-	}	
+	}
 	while (localContent.find(flags[6]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[6]), flags[6].size(), m_Settings.GetMisc3());
+	}
+	//Dates and Randoms
+	while (localContent.find(flags[0]) != std::string::npos) {
+		localContent.replace(localContent.find(flags[0]), flags[0].size(), m_Timer.GetDate());
+	}
+	while (localContent.find(flags[1]) != std::string::npos) {
+		localContent.replace(localContent.find(flags[1]), flags[1].size(), std::to_string(m_Rand.Generate(0, 100)));
+	}
+	while (localContent.find(flags[7]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		localContent.replace(localContent.find(flags[7]), flags[7].size(), m_LocalClock.GetTime());
 	}
 
 
