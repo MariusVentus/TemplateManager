@@ -37,3 +37,35 @@ Sample Text 2
 [Template]9
 Local Time
 [Time]
+
+[Template]10
+Today
+[Today]
+
+[Template]11
+Tomorrow
+[Tomorrow]
+
+
+[Template]12
+Yesterday
+[Yesterday]
+
+
+[Template]13
+Today Weekday
+[TodayWeekday]
+
+
+[Template]14
+Tomorrow Weekday
+[TomorrowWeekday]
+
+[Template]15
+Yesterday Weekday
+[YesterdayWeekday]
+
+[Template]16
+Full Date and Time
+[FullTimeNDate]
+

@@ -10,12 +10,13 @@ V0.0.1 - Added the buttons which put templates in Templates.txt to the users cli
 V0.0.2 - Templates now have no hard max, and window size partially adusts to the number of Templates! Also, fixed a bug where adjusting the last template risked creating a infinite loop.  
 Also adding a flag!
 
+V0.0.3 - Dynamically add Templates through an "Edit Template" window, and rescale the window to accomadate (without having to restart the program), and boost max auto-scale size to a little under Window Max height. 
+More Flags, and a Manual for the flags too!
+
 ***Planned Features (Warning: Doing this for fun in my free time. Updates will be slow, if at all)***
 
-1.) Add or Remove Template window to make creation easier. 
+1.) Getting Scrolling to work would be good too.
 
-2.) Getting Scrolling to work would be good too.
+2.) Open Email Templates with default email client. 
 
-3.) Open Email Templates with default email client. 
-
-4.) Improved code (As always, this is just a quick project, so main.cpp is spaghetti)
+3.) Improved code (As always, this is just a quick project, so main.cpp is spaghetti)

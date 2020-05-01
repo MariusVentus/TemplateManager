@@ -10,6 +10,7 @@
 #define ID_HELP 9003
 #define ID_OPEN_SETTINGS 9005
 #define ID_EDIT_TEMPLATES 9006
+#define ID_MANUAL 9007
 #define ID_IN_PROGRESS 9020
 #define ID_TEMPBASE 9050 //Nothing above this.
 
@@ -38,6 +39,7 @@ LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 void RegisterEditWindow(HINSTANCE hInst);
 void OpenEditWindow(HWND hWnd);
 LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
+std::string ShowManualText(void);
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -137,6 +139,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
 		}
+		else if (wParam == ID_MANUAL) {
+			MessageBox(NULL, ShowManualText().c_str(), "Manual", MB_OK | MB_ICONEXCLAMATION);
+		}
 		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_Templates.GetTemplateCount()) {
 			unsigned butNum = wParam - ID_TEMPBASE;
 			std::string stringNote = g_Templates.GetTemplateXContent(butNum);
@@ -178,6 +183,7 @@ void AddMenu(HWND hwnd)
 	//File Menu
 	hFileMenu = CreatePopupMenu();
 	AppendMenu(hFileMenu, MF_STRING, ID_EDIT_TEMPLATES, "Edit Templates");
+	AppendMenu(hFileMenu, MF_STRING, ID_MANUAL, "Template Creation Manual");
 	AppendMenu(hFileMenu, MF_STRING, ID_OPEN_SETTINGS, "Settings");
 	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(hFileMenu, MF_STRING, ID_FILE_EXIT, "Exit");
@@ -436,6 +442,9 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					g_LastCreatedY += 50;
 				}
 			}
+			else {
+				MessageBox(NULL, "No template title or content detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+			}
 			break;
 		case 2:
 			GetWindowText(hRemoveTemplateTitle, title, 100);
@@ -482,6 +491,9 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					MessageBox(NULL, "Removal Failed?\nPlease check the entered template title!", "Not Found?", MB_OK | MB_ICONEXCLAMATION);
 				}
 			}
+			else {
+				MessageBox(NULL, "No template title detected for removal!", "Error!", MB_OK | MB_ICONEXCLAMATION);
+			}
 			break;
 		case 3:
 			EnableWindow(hMainWindow, true);
@@ -491,4 +503,22 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		break;
 	}
 	return 0;
+}
+
+std::string ShowManualText(void) {
+	std::string text = "When creating a template, certain flags can be used to replace sections of text with unique outputs when the template is copied.\n\nThis includes adding times, dates, and even custom items from the settings menu!\nThe current flags include:\n";
+	text.append("\n> [Date] or [Today] includes the current date.\n");
+	text.append("\n> [Tomorrow] and [Yesterday] includes the tomorrow and yesterday's dates respectively.\n");
+	text.append("\n> [TodayWeekday], [TomorrowWeekday], and [YesterdayWeekday] includes the respective day's weekday.\n");
+	text.append("\n> [RandomPercentage] includes a random number between 0-100.\n");
+	text.append("\n> [Time] includes the current local time.\n");
+	text.append("\n> [FullTimeNDate] includes the full date and current local time.\n");
+	text.append("\n> [Name] includes the current name from the program's settings.\n");
+	text.append("\n> [Email] includes the current Email from the program's settings.\n");
+	text.append("\n> [Misc1] includes the content of the first Miscellaneous box from the program's settings.\n");
+	text.append("\n> [Misc2] includes the content of the second Miscellaneous box from the program's settings.\n");
+	text.append("\n> [Misc3] includes the content of the third Miscellaneous box from the program's settings.\n");
+
+
+	return text;
 }

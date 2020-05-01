@@ -86,7 +86,9 @@ void TemplateManager::RefreshTemplates(void)
 						break;
 					}
 				}
-				m_Templates.push_back(Templates(tempID, tempTitle, tempContent));
+				if (!tempTitle.empty() && !tempContent.empty()) {
+					m_Templates.push_back(Templates(tempID, tempTitle, tempContent));
+				}
 			}
 
 		} while (!in.eof());
@@ -97,7 +99,8 @@ void TemplateManager::RefreshTemplates(void)
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
 	std::string localContent = m_Templates[inX].m_Content;
-	std::string flags[8] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]","[Time]" };
+	std::string flags[15] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]",
+		"[Time]","[FullTimeNDate]", "[Today]", "[Tomorrow]", "[Yesterday]","[TodayWeekday]", "[TomorrowWeekday]", "[YesterdayWeekday]" };
 	//Content Flags
 	while (localContent.find(flags[2]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[2]), flags[2].size(), m_Settings.GetName());
@@ -114,17 +117,65 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	while (localContent.find(flags[6]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[6]), flags[6].size(), m_Settings.GetMisc3());
 	}
-	//Dates and Randoms
+	//Date
 	while (localContent.find(flags[0]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[0]), flags[0].size(), m_Timer.GetDate());
 	}
+	//Rand
 	while (localContent.find(flags[1]) != std::string::npos) {
 		localContent.replace(localContent.find(flags[1]), flags[1].size(), std::to_string(m_Rand.Generate(0, 100)));
 	}
+	//Time
 	while (localContent.find(flags[7]) != std::string::npos) {
 		m_LocalClock.RefreshTime();
 		localContent.replace(localContent.find(flags[7]), flags[7].size(), m_LocalClock.GetTime());
 	}
+	//FullTimeNDate
+	while (localContent.find(flags[8]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		localContent.replace(localContent.find(flags[8]), flags[8].size(), m_LocalClock.GetFullTime());
+	}
+	//Today
+	while (localContent.find(flags[9]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		localContent.replace(localContent.find(flags[9]), flags[9].size(), m_LocalClock.GetDate());
+	}
+	//Tomorrow
+	while (localContent.find(flags[10]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		m_LocalClock.SetTimeShiftedX(1);
+		localContent.replace(localContent.find(flags[10]), flags[10].size(), m_LocalClock.GetDate());
+		m_LocalClock.RefreshTime();
+	}
+	//Yesterday
+	while (localContent.find(flags[11]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		m_LocalClock.SetTimeShiftedX(-1);
+		localContent.replace(localContent.find(flags[11]), flags[11].size(), m_LocalClock.GetDate());
+		m_LocalClock.RefreshTime();
+	}
+	//Today's Weekday
+	while (localContent.find(flags[12]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		localContent.replace(localContent.find(flags[12]), flags[12].size(), m_LocalClock.GetDay());
+	}
+	//Tomorrow's Weekday
+	while (localContent.find(flags[13]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		m_LocalClock.SetTimeShiftedX(1);
+		localContent.replace(localContent.find(flags[13]), flags[13].size(), m_LocalClock.GetDay());
+		m_LocalClock.RefreshTime();
+	}
+	//Yesterday's Weekeday
+	while (localContent.find(flags[14]) != std::string::npos) {
+		m_LocalClock.RefreshTime();
+		m_LocalClock.SetTimeShiftedX(-1);
+		localContent.replace(localContent.find(flags[14]), flags[14].size(), m_LocalClock.GetDay());
+		m_LocalClock.RefreshTime();
+	}
+
+
+
 
 
 	return localContent;
