@@ -150,6 +150,7 @@ bool TemplateManager::RemoveTemplate(const std::string& inTitle)
 			TempList.push_back(m_Templates[i]);
 		}
 		else {
+			m_LastRemoved = i;
 			foundTemplate = true;
 		}
 	}

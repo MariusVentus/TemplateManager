@@ -17,6 +17,7 @@ public:
 	void AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent);
 	bool RemoveTemplate(const std::string& inTitle);
 	void SaveTemplates(void) const;
+	unsigned GetLastRemoved(void) const { return m_LastRemoved; }
 
 
 private: 
@@ -37,5 +38,6 @@ private:
 	};
 
 	std::vector<Templates> m_Templates;
+	unsigned m_LastRemoved = -1;
 
 };

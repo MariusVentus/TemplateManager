@@ -413,6 +413,28 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 				g_Templates.AddTemplate(newID, titleString, textString);
 				g_Templates.SaveTemplates();
 				MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+				hTemplates.push_back({ 0 });
+				{
+					//Shift Window Size
+					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+					unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+					if (approxWinHeight > screenY) {
+						approxWinHeight = screenY;
+					}
+					if (approxWinHeight < 130) {
+						approxWinHeight = 130;
+					}
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, SWP_NOMOVE | SWP_NOZORDER);
+					//New Button
+					unsigned i = g_Templates.GetTemplateCount() - 1;
+					hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
+						15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
+					if (hTemplates[i] == NULL) {
+						MessageBox(NULL, "Window Creation Failed!", "Error!",
+							MB_ICONEXCLAMATION | MB_OK);
+					}
+					g_LastCreatedY += 50;
+				}
 			}
 			break;
 		case 2:
@@ -422,6 +444,38 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 				if (g_Templates.RemoveTemplate(titleString)) {
 					MessageBox(NULL, "Removed Template!", "Removed!", MB_OK | MB_ICONEXCLAMATION);
 					g_Templates.SaveTemplates();
+					//Shift Window Size
+					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+					unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+					if (approxWinHeight > screenY) {
+						approxWinHeight = screenY;
+					}
+					if (approxWinHeight < 130) {
+						approxWinHeight = 130;
+					}
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, SWP_NOMOVE | SWP_NOZORDER);
+					//Remove Buttons!
+					for (unsigned i = 0; i < hTemplates.size(); i++) {
+						DestroyWindow(hTemplates[i]);
+					}
+					//Oh bloody heck next time I'm just using pointers, what with all the copy assignment operator errors I have had today.
+					std::vector<HWND> hTempTemplates;
+					for (unsigned i = 0; i < hTemplates.size(); i++) {
+						if (i != g_Templates.GetLastRemoved()) {
+							hTempTemplates.push_back(hTemplates[i]);
+						}
+					}
+					hTemplates.clear();
+					for (unsigned i = 0; i < hTempTemplates.size(); i++) {
+						hTemplates.push_back(hTempTemplates[i]);
+					}
+					//BRUTE FORCE
+					g_LastCreatedY = 15;
+					for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+						hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
+							15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
+						g_LastCreatedY += 50;
+					}
 				}
 				else
 				{
