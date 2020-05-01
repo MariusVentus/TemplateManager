@@ -14,6 +14,9 @@ public:
 	std::string GetTemplateXContent(unsigned inX);
 	unsigned GetTemplateCount(void) const { return m_Templates.size(); }
 	std::string GetTemplateFileLoc(void) const { return m_TemplateFile; }
+	void AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent);
+	bool RemoveTemplate(const std::string& inTitle);
+	void SaveTemplates(void) const;
 
 
 private: 
@@ -25,6 +28,9 @@ private:
 
 	struct Templates {
 		Templates(unsigned id, const std::string& title, const std::string& content);
+		Templates(const Templates& other);
+
+
 		const unsigned m_ID;
 		const std::string m_Title;
 		const std::string m_Content;

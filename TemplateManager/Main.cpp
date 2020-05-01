@@ -9,7 +9,7 @@
 #define ID_ABOUT 9002
 #define ID_HELP 9003
 #define ID_OPEN_SETTINGS 9005
-#define ID_ADDREMOVE_TEMPLATES 9006
+#define ID_EDIT_TEMPLATES 9006
 #define ID_IN_PROGRESS 9020
 #define ID_TEMPBASE 9050 //Nothing above this.
 
@@ -17,21 +17,27 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.2";
+const char g_WindowTitle[] = "Template Manager V0.0.3";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 TimeClock g_Timer;
 TemplateManager g_Templates(g_Settings, g_Timer);
 std::vector<HWND> hTemplates;
+RECT g_MainWin;
+HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
 
 //Forward Declarations
+void CreateMainWindow(HINSTANCE hInstance);
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void AddMenu(HWND hwnd);
 void AddControls(HWND hwnd);
 void RegisterSettingsWindow(HINSTANCE hInst);
 void OpenSettingsWindow(HWND hWnd);
 LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
+void RegisterEditWindow(HINSTANCE hInst);
+void OpenEditWindow(HWND hWnd);
+LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -61,22 +67,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	}
 
 	RegisterSettingsWindow(hInstance);
+	RegisterEditWindow(hInstance);
 
-	unsigned approxWinHeight = ((g_Templates.GetTemplateCount()+1) * 50)+30;
-	if (approxWinHeight > 800) {
-		approxWinHeight = 800;
-	}
-
-	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
-		CW_USEDEFAULT, CW_USEDEFAULT, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
-
-	if (hMainWindow == NULL)
-	{
-		MessageBox(NULL, "Window Creation Failed!", "Error!",
-			MB_ICONEXCLAMATION | MB_OK);
-		return 0;
-	}
-
+	CreateMainWindow(hInstance);
+	
 	ShowWindow(hMainWindow, nCmdShow);
 	UpdateWindow(hMainWindow);
 
@@ -88,6 +82,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	return Msg.wParam;
 }
 
+
+void CreateMainWindow(HINSTANCE hInstance)
+{
+	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+	unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+
+	if (approxWinHeight > screenY) {
+		approxWinHeight = screenY;
+	}
+
+	if (approxWinHeight < 130) {
+		approxWinHeight = 130;
+	}
+
+	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
+		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
+
+	if (hMainWindow == NULL)
+	{
+		MessageBox(NULL, "Window Creation Failed!", "Error!",
+			MB_ICONEXCLAMATION | MB_OK);
+	}
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -110,11 +127,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		else if (wParam == ID_OPEN_SETTINGS) {
 			OpenSettingsWindow(hwnd);
 		}
-		else if (wParam == ID_ADDREMOVE_TEMPLATES) {
-			if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\nA app restart is required to populate changes.\n\nAre you sure your want to enter?", L"Warning",
-				MB_OKCANCEL | MB_ICONERROR) == IDOK) {
-				ShellExecute(hwnd, "open", g_Templates.GetTemplateFileLoc().c_str(), NULL, NULL, SW_SHOW);
-			}
+		else if (wParam == ID_EDIT_TEMPLATES) {
+			OpenEditWindow(hwnd);
+			//if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\nA app restart is required to populate changes.\n\nAre you sure your want to enter?", L"Warning",
+			//	MB_OKCANCEL | MB_ICONERROR) == IDOK) {
+			//	ShellExecute(hwnd, "open", g_Templates.GetTemplateFileLoc().c_str(), NULL, NULL, SW_SHOW);
+			//}
 		}
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
@@ -159,7 +177,7 @@ void AddMenu(HWND hwnd)
 	hMenu = CreateMenu();
 	//File Menu
 	hFileMenu = CreatePopupMenu();
-	AppendMenu(hFileMenu, MF_STRING, ID_ADDREMOVE_TEMPLATES, "Add and Remove Templates");
+	AppendMenu(hFileMenu, MF_STRING, ID_EDIT_TEMPLATES, "Edit Templates");
 	AppendMenu(hFileMenu, MF_STRING, ID_OPEN_SETTINGS, "Settings");
 	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(hFileMenu, MF_STRING, ID_FILE_EXIT, "Exit");
@@ -216,11 +234,15 @@ void RegisterSettingsWindow(HINSTANCE hInst) {
 	setWin.lpszClassName = "mySettingsWindow";
 	setWin.hIconSm = (HICON)LoadImage(hInst, "Resources\\TM Logo.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
 
+
 	RegisterClassEx(&setWin);
 }
 
 void OpenSettingsWindow(HWND hWnd) {
-	HWND hSetWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "mySettingsWindow", "Settings", WS_VISIBLE | WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 300, 400, hWnd, NULL, NULL, NULL);
+
+	GetWindowRect(hMainWindow, &g_MainWin);
+
+	HWND hSetWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "mySettingsWindow", "Settings", WS_VISIBLE | WS_OVERLAPPEDWINDOW, g_MainWin.left, g_MainWin.top, 300, 400, hWnd, NULL, NULL, NULL);
 	if (hSetWindow == NULL)
 	{
 		MessageBox(NULL, "Window Creation Failed!", "Error!",
@@ -305,6 +327,114 @@ LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		break;
 	default:
 		return DefWindowProc(hWnd, msg, wp, lp);
+	}
+	return 0;
+}
+
+
+void RegisterEditWindow(HINSTANCE hInst) {
+	WNDCLASSEX editWin = { 0 };
+
+	editWin.cbSize = sizeof(WNDCLASSEX);
+	editWin.style = 0;
+	editWin.lpfnWndProc = EditWinProc;
+	editWin.cbClsExtra = 0;
+	editWin.cbWndExtra = 0;
+	editWin.hInstance = hInst;
+	editWin.hCursor = LoadCursor(NULL, IDC_ARROW);
+	editWin.hbrBackground = (HBRUSH)COLOR_WINDOW;
+	editWin.lpszMenuName = NULL;
+	editWin.lpszClassName = "myEditWindow";
+	editWin.hIconSm = (HICON)LoadImage(hInst, "Resources\\TM Logo.ico", IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+
+	RegisterClassEx(&editWin);
+}
+
+void OpenEditWindow(HWND hWnd) {
+
+	GetWindowRect(hMainWindow, &g_MainWin);
+
+	HWND hEditWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "myEditWindow", "Edit Templates", WS_VISIBLE | WS_OVERLAPPEDWINDOW, g_MainWin.left-200, g_MainWin.top, 500, 525, hWnd, NULL, NULL, NULL);
+	if (hEditWindow == NULL)
+	{
+		MessageBox(NULL, "Window Creation Failed!", "Error!",
+			MB_ICONEXCLAMATION | MB_OK);
+	}
+
+	CreateWindowEx(NULL, "STATIC", "Template Title (Button Text)", WS_CHILD | WS_VISIBLE,
+		20, 10, 440, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
+	hAddTemplateTitle = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 35, 440, 25, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+
+
+	CreateWindowEx(NULL, "STATIC", "Template Text", WS_CHILD | WS_VISIBLE,
+		20, 60, 440, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
+	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+		20, 85, 440, 200, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add", WS_VISIBLE | WS_CHILD, 360, 300, 100, 40, hEditWindow, (HMENU)1, NULL, NULL);
+
+	CreateWindowEx(NULL, "STATIC", "Template for Removal (Button Text)", WS_CHILD | WS_VISIBLE,
+		20, 325, 250, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
+	hRemoveTemplateTitle = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		20, 350, 440, 25, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+
+
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Remove", WS_VISIBLE | WS_CHILD, 360, 385, 100, 40, hEditWindow, (HMENU)2, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Close", WS_VISIBLE | WS_CHILD, 360, 435, 100, 40, hEditWindow, (HMENU)3, NULL, NULL);
+
+	//Disable the main window, turning a Modless dialogue box into a modal dialogue
+	EnableWindow(hWnd, false);
+}
+
+
+LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
+	switch (msg) {
+	case WM_CLOSE:
+		EnableWindow(hMainWindow, true);
+		DestroyWindow(hWnd);
+		break;
+	default:
+		return DefWindowProc(hWnd, msg, wp, lp);
+	case WM_COMMAND:
+		char title[100] = "";
+		std::string titleString = "";
+		char text[5000] = "";
+		std::string textString = "";
+		unsigned newID = g_Templates.GetTemplateCount() + 1;
+		switch (wp)
+		{
+		case 1:
+			GetWindowText(hAddTemplateTitle, title, 100);
+			titleString = title;
+			GetWindowText(hAddTemplateText, text, 5000);
+			textString = text;
+			if (!textString.empty() && !titleString.empty()) {
+				g_Templates.AddTemplate(newID, titleString, textString);
+				g_Templates.SaveTemplates();
+				MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+			}
+			break;
+		case 2:
+			GetWindowText(hRemoveTemplateTitle, title, 100);
+			titleString = title;
+			if (!titleString.empty()) {
+				if (g_Templates.RemoveTemplate(titleString)) {
+					MessageBox(NULL, "Removed Template!", "Removed!", MB_OK | MB_ICONEXCLAMATION);
+					g_Templates.SaveTemplates();
+				}
+				else
+				{
+					MessageBox(NULL, "Removal Failed?\nPlease check the entered template title!", "Not Found?", MB_OK | MB_ICONEXCLAMATION);
+				}
+			}
+			break;
+		case 3:
+			EnableWindow(hMainWindow, true);
+			DestroyWindow(hWnd);
+			break;
+		}
+		break;
 	}
 	return 0;
 }

@@ -4,29 +4,36 @@
 [Template]1
 Date
 [Date]
+
 [Template]2
 Random Percentage
 [RandomPercentage]
+
 [Template]3
 Name
 [Name]
+
 [Template]4
 Email
 [Email]
+
 [Template]5
 Misc1
 [Misc1]
+
 [Template]6
 Misc2
 [Misc2]
+
 [Template]7
 Misc3
 [Misc3]
+
 [Template]8
 Sample
 Sample Text
 Sample Text 2
+
 [Template]9
-LocalTime
+Local Time
 [Time]
-[Template]10

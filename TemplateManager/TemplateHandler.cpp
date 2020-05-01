@@ -49,13 +49,21 @@ void TemplateManager::RefreshTemplates(void)
 					if (token.find("[Template]") == std::string::npos) {
 						token.clear();
 						std::getline(in, token);
-						//Remove whitespace
-						while (token.find(" ") != std::string::npos) {
-							token.erase(token.find(" "), 1);
-						}
 						//Remove "comments"
 						if (token.find(";;") != std::string::npos) {
 							token.erase(token.find(";;"));
+						}
+						//Remove Double whitespace
+						while (token.find("  ") != std::string::npos) {
+							token.erase(token.find("  "), 1);
+						}
+						//Remove Leading Whitespace
+						if (token.find(" ") == 0) {
+							token.erase(token.find(" "), 1);
+						}
+						//Remove Trailing Whitespace
+						if (token.find_last_of(" ") == token.size() - 1 && !token.empty()) {
+							token.pop_back();
 						}
 					}
 					else {
@@ -122,10 +130,71 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	return localContent;
 }
 
+void TemplateManager::AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent)
+{
+	auto outString = inContent;
+	while (outString.find("\r") != std::string::npos) {
+		outString.erase(outString.find("\r"), 1);
+	}
+	m_Templates.push_back(Templates(inID, inTitle, outString));
+}
+
+bool TemplateManager::RemoveTemplate(const std::string& inTitle)
+{
+
+	//m_Templates.erase(m_Templates.begin() + i); uses implicit copy assigmment operators, which const members delete. 
+	bool foundTemplate = false;
+	std::vector<Templates> TempList;
+	for (unsigned i = 0; i < m_Templates.size(); i++) {
+		if (m_Templates[i].m_Title != inTitle) {
+			TempList.push_back(m_Templates[i]);
+		}
+		else {
+			foundTemplate = true;
+		}
+	}
+	m_Templates.clear();
+	for (unsigned i = 0; i < TempList.size(); i++) {
+		m_Templates.push_back(TempList[i]);
+	}
+
+	return foundTemplate;
+
+}
+
+void TemplateManager::SaveTemplates(void) const
+{
+	std::ofstream out(m_TemplateFile, std::ofstream::trunc);
+	std::string outString = ";;[Template]ID\n;;Title\n;;Content";
+	for (unsigned i = 0; i < m_Templates.size(); i++) {
+		outString.append("\n[Template]");
+		outString.append(std::to_string(m_Templates[i].m_ID));
+		outString.append("\n");
+		outString.append(m_Templates[i].m_Title);
+		outString.append("\n");
+		outString.append(m_Templates[i].m_Content);
+	}
+
+	while (outString.find("\r") != std::string::npos) {
+		outString.erase(outString.find("\r"), 1);
+	}
+
+	out << outString;
+
+}
+
 TemplateManager::Templates::Templates(unsigned id, const std::string& title, const std::string& content)
 	:
 	m_ID(id),
 	m_Title(title),
 	m_Content(content)
+{
+}
+
+TemplateManager::Templates::Templates(const Templates & other)
+	:
+	m_ID(other.m_ID),
+	m_Title(other.m_Title),
+	m_Content(other.m_Content)
 {
 }
