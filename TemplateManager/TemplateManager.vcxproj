@@ -143,6 +143,7 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="Settings\Settings.txt" />
+    <Text Include="Templates\Default Templates.txt" />
     <Text Include="Templates\Templates.txt" />
   </ItemGroup>
   <ItemGroup>

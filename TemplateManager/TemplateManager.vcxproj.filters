@@ -62,6 +62,9 @@
     <Text Include="Templates\Templates.txt">
       <Filter>Templates</Filter>
     </Text>
+    <Text Include="Templates\Default Templates.txt">
+      <Filter>Templates</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TemplateHandler.h">

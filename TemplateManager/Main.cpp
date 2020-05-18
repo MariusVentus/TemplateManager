@@ -27,9 +27,11 @@ TemplateManager g_Templates(g_Settings, g_Timer);
 std::vector<HWND> hTemplates;
 RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
+int g_scrollY = 0;
 
 //Forward Declarations
-void CreateMainWindow(HINSTANCE hInstance);
+bool CreateMainWindow(HINSTANCE hInstance);
+bool RegisterMainWindow(HINSTANCE hInstance);
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void AddMenu(HWND hwnd);
 void AddControls(HWND hwnd);
@@ -40,13 +42,67 @@ void RegisterEditWindow(HINSTANCE hInst);
 void OpenEditWindow(HWND hWnd);
 LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 std::string ShowManualText(void);
+void ResetScrollbarSize();
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
-	WNDCLASSEX wc;
 	MSG Msg;
+
+	if (!RegisterMainWindow(hInstance)) {
+		return 0;
+	}
+	RegisterSettingsWindow(hInstance);
+	RegisterEditWindow(hInstance);
+
+	if (!CreateMainWindow(hInstance)) {
+		return 0;
+	}
+
+	ShowWindow(hMainWindow, nCmdShow);
+	UpdateWindow(hMainWindow);
+
+	while (GetMessage(&Msg, NULL, 0, 0) > 0)
+	{
+		TranslateMessage(&Msg);
+		DispatchMessage(&Msg);
+	}
+	return Msg.wParam;
+}
+
+
+bool CreateMainWindow(HINSTANCE hInstance)
+{
+	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+	unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
+
+	if (approxWinHeight > screenY) {
+		approxWinHeight = screenY;
+	}
+
+	if (approxWinHeight < 130) {
+		approxWinHeight = 130;
+	}
+
+	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
+		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
+
+	ResetScrollbarSize();
+
+	if (hMainWindow == NULL)
+	{
+		MessageBox(NULL, "Window Creation Failed!", "Error!",
+			MB_ICONEXCLAMATION | MB_OK);
+		return false;
+	}
+	else {
+		return true;
+	}
+}
+
+bool RegisterMainWindow(HINSTANCE hInstance) {
+	WNDCLASSEX wc = { 0 };
 
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = 0;
@@ -65,46 +121,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	{
 		MessageBox(NULL, "Window Registration Failed!", "Error!",
 			MB_ICONEXCLAMATION | MB_OK);
-		return 0;
+		return false;
 	}
-
-	RegisterSettingsWindow(hInstance);
-	RegisterEditWindow(hInstance);
-
-	CreateMainWindow(hInstance);
-	
-	ShowWindow(hMainWindow, nCmdShow);
-	UpdateWindow(hMainWindow);
-
-	while (GetMessage(&Msg, NULL, 0, 0) > 0)
-	{
-		TranslateMessage(&Msg);
-		DispatchMessage(&Msg);
-	}
-	return Msg.wParam;
-}
-
-
-void CreateMainWindow(HINSTANCE hInstance)
-{
-	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-	unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
-
-	if (approxWinHeight > screenY) {
-		approxWinHeight = screenY;
-	}
-
-	if (approxWinHeight < 130) {
-		approxWinHeight = 130;
-	}
-
-	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
-		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
-
-	if (hMainWindow == NULL)
-	{
-		MessageBox(NULL, "Window Creation Failed!", "Error!",
-			MB_ICONEXCLAMATION | MB_OK);
+	else {
+		return true;
 	}
 }
 
@@ -161,6 +181,44 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			GlobalFree(hg);
 		}
 		break;
+
+	case WM_VSCROLL:
+	{
+		auto action = LOWORD(wParam);
+		HWND hScroll = (HWND)lParam;
+		int pos = -1;
+		if (action == SB_THUMBPOSITION || action == SB_THUMBTRACK) {
+			pos = HIWORD(wParam);
+		}
+		else if (action == SB_LINEDOWN) {
+			pos = g_scrollY + 50;
+		}
+		else if (action == SB_LINEUP) {
+			pos = g_scrollY - 50;
+		}
+		if (pos == -1) {
+			break;
+		}
+		//Keeps repeated commands (IE Buttons) from scrolling to infinity
+		SCROLLINFO si = { 0 };
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_POS;
+		si.nPos = pos;
+		si.nTrackPos = 0;
+		SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+		GetScrollInfo(hMainWindow, SB_VERT, &si);
+		pos = si.nPos;
+		//As far as I can tell, this was for compatability somehow, but no idea how. I fought all day with this scrollbar, so I don't need to know how at this point.
+		//POINT pt;
+		//pt.x = 0;
+		//pt.y = pos - g_scrollY;
+		////auto hdc = GetDC(hMainWindow);
+		////LPtoDP(hdc, &pt, 1);
+		////ReleaseDC(hMainWindow, hdc);
+		ScrollWindow(hMainWindow, 0, -(pos - g_scrollY), NULL, NULL);
+		g_scrollY = pos;
+	}
+	break;
 	case WM_MOUSEWHEEL:
 		//MessageBox(NULL, "Wheel", "Wheel", MB_OK | MB_ICONEXCLAMATION);
 		break;
@@ -198,22 +256,6 @@ void AddMenu(HWND hwnd)
 
 void AddControls(HWND hwnd)
 {
-	//HWND hInterior; Was going to try making the Template buttons show up in a scrollable box, but graphics issues insued. Will come back to this. 
-
-	//hInterior = CreateWindowEx(WS_EX_CLIENTEDGE, "Edit", "",
-	//	WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL,
-	//	0, 0, 350, 500, hwnd, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
-	//std::string holding;
-	//for (unsigned i = 0; i < g_templateCount; i++) {
-	//	holding.append("\r\n");
-	//	holding.append("\r\n");
-	//	holding.append("\r\n");
-	//	holding.append("\r\n");
-	//	holding.append("\r\n");
-	//	holding.append("\r\n");
-	//}
-	//SetWindowText(hInterior, holding.c_str());
-
 	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates.push_back({ 0 });
 	}
@@ -423,7 +465,7 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 				{
 					//Shift Window Size
 					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-					unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+					unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
 					if (approxWinHeight > screenY) {
 						approxWinHeight = screenY;
 					}
@@ -455,7 +497,7 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					g_Templates.SaveTemplates();
 					//Shift Window Size
 					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-					unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+					unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
 					if (approxWinHeight > screenY) {
 						approxWinHeight = screenY;
 					}
@@ -521,4 +563,18 @@ std::string ShowManualText(void) {
 
 
 	return text;
+}
+
+void ResetScrollbarSize()
+{
+	GetWindowRect(hMainWindow, &g_MainWin);
+	SCROLLINFO si = { 0 };
+	si.cbSize = sizeof(SCROLLINFO);
+	si.fMask = SIF_ALL;
+	si.nMin = 0;
+	si.nMax = (g_LastCreatedY)+55;
+	si.nPage = (g_MainWin.bottom - g_MainWin.top);
+	si.nPos = 0;
+	si.nTrackPos = 0;
+	SetScrollInfo(hMainWindow, SB_VERT, &si, true);
 }
