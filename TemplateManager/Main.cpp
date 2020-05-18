@@ -11,6 +11,8 @@
 #define ID_OPEN_SETTINGS 9005
 #define ID_EDIT_TEMPLATES 9006
 #define ID_MANUAL 9007
+#define ID_CLEAR_TEMPLATES 9008
+#define ID_RESTORE_DEFAULT_TEMPLATES 9009
 #define ID_IN_PROGRESS 9020
 #define ID_TEMPBASE 9050 //Nothing above this.
 
@@ -18,7 +20,7 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.4";
+const char g_WindowTitle[] = "Template Manager V0.0.5";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
@@ -161,10 +163,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		else if (wParam == ID_EDIT_TEMPLATES) {
 			OpenEditWindow(hwnd);
-			//if (MessageBoxW(hwnd, L"A UI has not been completed for Templates. This will directly open the Templates.txt settings file, and this access was for testing purposes.\nA app restart is required to populate changes.\n\nAre you sure your want to enter?", L"Warning",
-			//	MB_OKCANCEL | MB_ICONERROR) == IDOK) {
-			//	ShellExecute(hwnd, "open", g_Templates.GetTemplateFileLoc().c_str(), NULL, NULL, SW_SHOW);
-			//}
+		}
+		else if (wParam == ID_CLEAR_TEMPLATES) {
+			if (MessageBox(hwnd, "This will delete all current templates permenantly?\nAre sure you want to do this?", "Warning",
+				MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+				g_Templates.ClearAllTemplates();
+				g_Templates.SaveTemplates();
+				//Shift Window Size
+				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+				//New Button
+				RebuildTemplateButtons();
+				ResetScrollbarSize();
+			}
+		}
+		else if (wParam == ID_RESTORE_DEFAULT_TEMPLATES) {
+			if (MessageBox(hwnd, "This will overwrite all current templates?\nAre sure you want to do this?", "Warning",
+				MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+				g_Templates.ResetToDefaultTemplates();
+				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+				//New Button
+				RebuildTemplateButtons();
+				ResetScrollbarSize();
+			}
 		}
 		else if (wParam == ID_IN_PROGRESS) {
 			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
@@ -281,7 +301,10 @@ void AddMenu(HWND hwnd)
 	//File Menu
 	hFileMenu = CreatePopupMenu();
 	AppendMenu(hFileMenu, MF_STRING, ID_EDIT_TEMPLATES, "Edit Templates");
-	AppendMenu(hFileMenu, MF_STRING, ID_MANUAL, "Template Creation Manual");
+	AppendMenu(hFileMenu, MF_STRING, ID_MANUAL, "Template Editing Manual");
+	AppendMenu(hFileMenu, MF_STRING, ID_CLEAR_TEMPLATES, "Clear All Templates");
+	AppendMenu(hFileMenu, MF_STRING, ID_RESTORE_DEFAULT_TEMPLATES, "Restore Default Templates");
+	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(hFileMenu, MF_STRING, ID_OPEN_SETTINGS, "Settings");
 	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(hFileMenu, MF_STRING, ID_FILE_EXIT, "Exit");
@@ -498,17 +521,24 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			GetWindowText(hAddTemplateText, text, 5000);
 			textString = text;
 			if (!textString.empty() && !titleString.empty()) {
-				g_Templates.AddTemplate(newID, titleString, textString);
-				g_Templates.SaveTemplates();
-				MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
-				hTemplates.push_back({ 0 });
-				{
-					//Shift Window Size
-					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-					//New Button
-					RebuildTemplateButtons();
-					ResetScrollbarSize();
+				if (g_Templates.FindTemplate(titleString)) {
+					if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
+						MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+						g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
+						g_Templates.SaveTemplates();
+						MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+					}
 				}
+				else {
+					g_Templates.AddTemplate(newID, titleString, textString);
+					g_Templates.SaveTemplates();
+					MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+				}
+				//Shift Window Size
+				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+				//New Button
+				RebuildTemplateButtons();
+				ResetScrollbarSize();
 			}
 			else {
 				MessageBox(NULL, "No template title or content detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);

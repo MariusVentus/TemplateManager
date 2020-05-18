@@ -11,9 +11,14 @@ TemplateManager::TemplateManager(const SettingsHandler& inSet, const TimeClock& 
 
 void TemplateManager::RefreshTemplates(void)
 {
+	RefreshTemplates(m_TemplateFile);
+}
+
+void TemplateManager::RefreshTemplates(const std::string& inFileLoc)
+{
 	m_Templates.clear();
 
-	std::ifstream in(m_TemplateFile);
+	std::ifstream in(inFileLoc);
 	if (in) {
 		std::string token = "";
 
@@ -44,7 +49,7 @@ void TemplateManager::RefreshTemplates(void)
 			if (token.find("[Template]") != std::string::npos) {
 				token.erase(0, 10);
 				tempID = std::stoul(token);
-			//Get Title
+				//Get Title
 				do {
 					if (token.find("[Template]") == std::string::npos) {
 						token.clear();
@@ -78,27 +83,32 @@ void TemplateManager::RefreshTemplates(void)
 					std::getline(in, token);
 					if (token.find("[Template]") == std::string::npos) {
 						tempContent.append(token);
-						if (!token.empty()) {
-							tempContent.append("\r\n");
-						}
+						tempContent.append("\n");
 					}
 					else {
+						if (!tempContent.empty()) {
+							if (tempContent.back() == '\n') {
+								tempContent.pop_back();
+							}
+						}
 						break;
 					}
 				}
 				if (!tempTitle.empty() && !tempContent.empty()) {
+					if (in.eof() && tempContent.back() == '\n') {
+						tempContent.pop_back();
+					}
 					m_Templates.push_back(Templates(tempID, tempTitle, tempContent));
 				}
 			}
 
 		} while (!in.eof());
 	}
-
 }
 
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
-	std::string localContent = m_Templates[inX].m_Content;
+	std::string localContent = m_Templates[inX].GetContent();
 	std::string flags[15] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]",
 		"[Time]","[FullTimeNDate]", "[Today]", "[Tomorrow]", "[Yesterday]","[TodayWeekday]", "[TomorrowWeekday]", "[YesterdayWeekday]" };
 	//Content Flags
@@ -181,6 +191,15 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	return localContent;
 }
 
+void TemplateManager::OverwriteTemplateContent(unsigned tempNum, const std::string inContent)
+{
+	auto outString = inContent;
+	while (outString.find("\r") != std::string::npos) {
+		outString.erase(outString.find("\r"), 1);
+	}
+	m_Templates[tempNum].OverwriteContent(outString);
+}
+
 void TemplateManager::AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent)
 {
 	auto outString = inContent;
@@ -190,10 +209,34 @@ void TemplateManager::AddTemplate(const unsigned inID, const std::string& inTitl
 	m_Templates.push_back(Templates(inID, inTitle, outString));
 }
 
+bool TemplateManager::FindTemplate(const std::string& inTitle) const
+{
+	bool foundTemplate = false;
+	for (unsigned i = 0; i < m_Templates.size(); i++) {
+		if (m_Templates[i].m_Title == inTitle) {
+			foundTemplate = true;
+		}
+	}
+	return foundTemplate;
+}
+
+unsigned TemplateManager::FindTemplateIterator(const std::string & inTitle) const
+{
+	unsigned tempIter = 0;
+	while (tempIter < m_Templates.size()){
+		if (m_Templates[tempIter].m_Title == inTitle) {
+			break;
+		}
+		tempIter++;
+	}
+	return tempIter;
+}
+
 bool TemplateManager::RemoveTemplate(const std::string& inTitle)
 {
 
 	//m_Templates.erase(m_Templates.begin() + i); uses implicit copy assigmment operators, which const members delete. 
+	//Modified FindTemplate required to generate a list of items to keep.
 	bool foundTemplate = false;
 	std::vector<Templates> TempList;
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
@@ -201,13 +244,15 @@ bool TemplateManager::RemoveTemplate(const std::string& inTitle)
 			TempList.push_back(m_Templates[i]);
 		}
 		else {
-			m_LastRemoved = i;
+			//m_LastRemoved = i;
 			foundTemplate = true;
 		}
 	}
-	m_Templates.clear();
-	for (unsigned i = 0; i < TempList.size(); i++) {
-		m_Templates.push_back(TempList[i]);
+	if (foundTemplate) {
+		m_Templates.clear();
+		for (unsigned i = 0; i < TempList.size(); i++) {
+			m_Templates.push_back(TempList[i]);
+		}
 	}
 
 	return foundTemplate;
@@ -224,7 +269,7 @@ void TemplateManager::SaveTemplates(void) const
 		outString.append("\n");
 		outString.append(m_Templates[i].m_Title);
 		outString.append("\n");
-		outString.append(m_Templates[i].m_Content);
+		outString.append(m_Templates[i].GetContent());
 	}
 
 	while (outString.find("\r") != std::string::npos) {
@@ -233,6 +278,17 @@ void TemplateManager::SaveTemplates(void) const
 
 	out << outString;
 
+}
+
+void TemplateManager::ClearAllTemplates(void)
+{
+	m_Templates.clear();
+}
+
+void TemplateManager::ResetToDefaultTemplates(void)
+{
+	RefreshTemplates(m_TemplateDefaultFile);
+	SaveTemplates();
 }
 
 TemplateManager::Templates::Templates(unsigned id, const std::string& title, const std::string& content)

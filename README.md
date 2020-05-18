@@ -15,6 +15,8 @@ More Flags, and a Manual for the flags too!
 
 V0.0.4 - Working Scrollbar with mouse scrolling! Fixed bug with multiple template additions and removals in a row.
 
+V0.0.5 - Added options for clearing all templates, restoring from a default, and editing existing templates. Templates can now also have empty lines for improved formatting. 
+
 ***Planned Features (Warning: Doing this for fun in my free time. Updates will be slow, if at all)***
 
 1.) Open Email Templates with default email client. 
