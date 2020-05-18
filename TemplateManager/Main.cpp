@@ -18,7 +18,7 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.3";
+const char g_WindowTitle[] = "Template Manager V0.0.4";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
@@ -27,11 +27,13 @@ TemplateManager g_Templates(g_Settings, g_Timer);
 std::vector<HWND> hTemplates;
 RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
-int g_scrollY = 0;
+int g_ScrollY = 0;
+int g_ScrollYSensitivity = 50;
 
 //Forward Declarations
 bool CreateMainWindow(HINSTANCE hInstance);
 bool RegisterMainWindow(HINSTANCE hInstance);
+unsigned ApproximateWindowHeight();
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 void AddMenu(HWND hwnd);
 void AddControls(HWND hwnd);
@@ -43,6 +45,7 @@ void OpenEditWindow(HWND hWnd);
 LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 std::string ShowManualText(void);
 void ResetScrollbarSize();
+void RebuildTemplateButtons();
 
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -74,19 +77,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 bool CreateMainWindow(HINSTANCE hInstance)
 {
-	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-	unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
 
-	if (approxWinHeight > screenY) {
-		approxWinHeight = screenY;
-	}
-
-	if (approxWinHeight < 130) {
-		approxWinHeight = 130;
-	}
 
 	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
-		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, NULL, NULL, hInstance, NULL);
+		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), NULL, NULL, hInstance, NULL);
 
 	ResetScrollbarSize();
 
@@ -126,6 +120,22 @@ bool RegisterMainWindow(HINSTANCE hInstance) {
 	else {
 		return true;
 	}
+}
+
+unsigned ApproximateWindowHeight()
+{
+	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+	unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
+	//Max
+	if (approxWinHeight > screenY) {
+		approxWinHeight = screenY;
+	}
+	//Min
+	if (approxWinHeight < 130) {
+		approxWinHeight = 130;
+	}
+
+	return approxWinHeight;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -191,10 +201,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			pos = HIWORD(wParam);
 		}
 		else if (action == SB_LINEDOWN) {
-			pos = g_scrollY + 50;
+			pos = g_ScrollY + g_ScrollYSensitivity;
 		}
 		else if (action == SB_LINEUP) {
-			pos = g_scrollY - 50;
+			pos = g_ScrollY - g_ScrollYSensitivity;
 		}
 		if (pos == -1) {
 			break;
@@ -215,13 +225,43 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		////auto hdc = GetDC(hMainWindow);
 		////LPtoDP(hdc, &pt, 1);
 		////ReleaseDC(hMainWindow, hdc);
-		ScrollWindow(hMainWindow, 0, -(pos - g_scrollY), NULL, NULL);
-		g_scrollY = pos;
+		ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
+		g_ScrollY = pos;
 	}
 	break;
-	case WM_MOUSEWHEEL:
-		//MessageBox(NULL, "Wheel", "Wheel", MB_OK | MB_ICONEXCLAMATION);
+	case WM_SIZE:
+		ResetScrollbarSize();
 		break;
+	case WM_MOUSEWHEEL: 
+	{
+		int pos = -1;
+		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0) {
+			pos = g_ScrollY - g_ScrollYSensitivity;
+			//mouse wheel scrolled up
+		}
+		else if (GET_WHEEL_DELTA_WPARAM(wParam) < 0) {
+			pos = g_ScrollY + g_ScrollYSensitivity;
+			//mouse wheel scrolled down
+		}
+		else { //always goes here
+			//unknown mouse wheel scroll direction
+			break;
+		}
+		if (pos == -1) {
+			break;
+		}
+		SCROLLINFO si = { 0 };
+		si.cbSize = sizeof(SCROLLINFO);
+		si.fMask = SIF_POS;
+		si.nPos = pos;
+		si.nTrackPos = 0;
+		SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+		GetScrollInfo(hMainWindow, SB_VERT, &si);
+		pos = si.nPos;
+		ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
+		g_ScrollY = pos;
+	}
+	break;
 	case WM_CLOSE:
 		DestroyWindow(hwnd);
 		break;
@@ -464,24 +504,10 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 				hTemplates.push_back({ 0 });
 				{
 					//Shift Window Size
-					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-					unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
-					if (approxWinHeight > screenY) {
-						approxWinHeight = screenY;
-					}
-					if (approxWinHeight < 130) {
-						approxWinHeight = 130;
-					}
-					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, SWP_NOMOVE | SWP_NOZORDER);
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
 					//New Button
-					unsigned i = g_Templates.GetTemplateCount() - 1;
-					hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
-						15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
-					if (hTemplates[i] == NULL) {
-						MessageBox(NULL, "Window Creation Failed!", "Error!",
-							MB_ICONEXCLAMATION | MB_OK);
-					}
-					g_LastCreatedY += 50;
+					RebuildTemplateButtons();
+					ResetScrollbarSize();
 				}
 			}
 			else {
@@ -496,37 +522,9 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					MessageBox(NULL, "Removed Template!", "Removed!", MB_OK | MB_ICONEXCLAMATION);
 					g_Templates.SaveTemplates();
 					//Shift Window Size
-					unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
-					unsigned screenY = 600;//GetSystemMetrics(SM_CYSCREEN) - 50;
-					if (approxWinHeight > screenY) {
-						approxWinHeight = screenY;
-					}
-					if (approxWinHeight < 130) {
-						approxWinHeight = 130;
-					}
-					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, approxWinHeight, SWP_NOMOVE | SWP_NOZORDER);
-					//Remove Buttons!
-					for (unsigned i = 0; i < hTemplates.size(); i++) {
-						DestroyWindow(hTemplates[i]);
-					}
-					//Oh bloody heck next time I'm just using pointers, what with all the copy assignment operator errors I have had today.
-					std::vector<HWND> hTempTemplates;
-					for (unsigned i = 0; i < hTemplates.size(); i++) {
-						if (i != g_Templates.GetLastRemoved()) {
-							hTempTemplates.push_back(hTemplates[i]);
-						}
-					}
-					hTemplates.clear();
-					for (unsigned i = 0; i < hTempTemplates.size(); i++) {
-						hTemplates.push_back(hTempTemplates[i]);
-					}
-					//BRUTE FORCE
-					g_LastCreatedY = 15;
-					for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
-						hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
-							15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
-						g_LastCreatedY += 50;
-					}
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+					RebuildTemplateButtons();
+					ResetScrollbarSize();
 				}
 				else
 				{
@@ -567,14 +565,48 @@ std::string ShowManualText(void) {
 
 void ResetScrollbarSize()
 {
+	const unsigned localMaxSize = g_LastCreatedY + 55;
 	GetWindowRect(hMainWindow, &g_MainWin);
 	SCROLLINFO si = { 0 };
 	si.cbSize = sizeof(SCROLLINFO);
 	si.fMask = SIF_ALL;
 	si.nMin = 0;
-	si.nMax = (g_LastCreatedY)+55;
+	si.nMax = localMaxSize;
 	si.nPage = (g_MainWin.bottom - g_MainWin.top);
 	si.nPos = 0;
 	si.nTrackPos = 0;
 	SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+}
+
+void RebuildTemplateButtons()
+{
+	//Reset Scroll position to avoid issues with button creation. 
+	SCROLLINFO si = { 0 };
+	si.cbSize = sizeof(SCROLLINFO);
+	si.fMask = SIF_POS;
+	si.nPos = 0;
+	si.nTrackPos = 0;
+	SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+	GetScrollInfo(hMainWindow, SB_VERT, &si);
+	ScrollWindow(hMainWindow, 0, si.nPos , NULL, NULL);
+	g_ScrollY = si.nPos;
+
+	//Remove Buttons
+	for (unsigned i = 0; i < hTemplates.size(); i++) {
+		DestroyWindow(hTemplates[i]);
+	}
+
+	//Clear all window Templates
+	hTemplates.clear();
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+		hTemplates.push_back({ 0 });
+	}
+
+	//Rebuild Buttons
+	g_LastCreatedY = 15;
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
+			15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
+		g_LastCreatedY += 50;
+	}
 }

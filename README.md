@@ -13,10 +13,10 @@ Also adding a flag!
 V0.0.3 - Dynamically add Templates through an "Edit Template" window, and rescale the window to accomadate (without having to restart the program), and boost max auto-scale size to a little under Window Max height. 
 More Flags, and a Manual for the flags too!
 
+V0.0.4 - Working Scrollbar with mouse scrolling! Fixed bug with multiple template additions and removals in a row.
+
 ***Planned Features (Warning: Doing this for fun in my free time. Updates will be slow, if at all)***
 
-1.) Getting Scrolling to work would be good too.
+1.) Open Email Templates with default email client. 
 
-2.) Open Email Templates with default email client. 
-
-3.) Improved code (As always, this is just a quick project, so main.cpp is spaghetti)
+2.) Improved code (As always, this is just a quick project, so main.cpp is spaghetti)
