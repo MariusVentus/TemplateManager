@@ -28,9 +28,15 @@ public:
 	void ClearAllTemplates(void);
 	void ResetToDefaultTemplates(void);
 
+	//File Shennanigans
+	bool FileExists(const std::string& inFilename);
+	std::string GetDefaultFilesDir(void) const { return m_TemplateDefaultFilesDir; }
+
 private: 
 	const std::string m_TemplateFile = "Templates\\Templates.txt";
 	const std::string m_TemplateDefaultFile = "Templates\\Default Templates.txt";
+	const std::string m_TemplateDefaultFilesDir = "Templates\\DefaultFiles";
+
 	const SettingsHandler& m_Settings;
 	const TimeClock& m_Timer;
 	TimeClock m_LocalClock;
@@ -43,7 +49,7 @@ private:
 		std::string GetContent(void) const { return m_Content; }
 		void OverwriteContent(const std::string content) { m_Content = content; }
 
-		const unsigned m_ID;
+		const unsigned m_ID; //Repurposing as a TypeID rather than uniue identifier. Not lazy, smrt. 
 		const std::string m_Title;
 	private:
 		std::string m_Content;

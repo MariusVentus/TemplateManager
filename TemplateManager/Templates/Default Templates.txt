@@ -1,53 +1,53 @@
-;;[Template]ID
+;;[Template]TypeID
 ;;Title
 ;;Content
-[Template]1
+[Template]0
 Date
 [Date]
-[Template]2
+[Template]0
 Random Percentage
 [RandomPercentage]
-[Template]3
+[Template]0
 Name
 [Name]
-[Template]4
+[Template]0
 Email
 [Email]
-[Template]5
+[Template]0
 Misc1
 [Misc1]
-[Template]6
+[Template]0
 Misc2
 [Misc2]
-[Template]7
+[Template]0
 Misc3
 [Misc3]
-[Template]8
+[Template]0
 Sample
 Sample Text
 
 Sample Text 2
-[Template]9
+[Template]0
 Local Time
 [Time]
-[Template]10
+[Template]0
 Today
 [Today]
-[Template]11
+[Template]0
 Tomorrow
 [Tomorrow]
-[Template]12
+[Template]0
 Yesterday
 [Yesterday]
-[Template]13
+[Template]0
 Today Weekday
 [TodayWeekday]
-[Template]14
+[Template]0
 Tomorrow Weekday
 [TomorrowWeekday]
-[Template]15
+[Template]0
 Yesterday Weekday
 [YesterdayWeekday]
-[Template]16
+[Template]0
 Full Date and Time
 [FullTimeNDate]

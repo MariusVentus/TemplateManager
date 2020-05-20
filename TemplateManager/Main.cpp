@@ -31,6 +31,7 @@ RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
 int g_ScrollY = 0;
 int g_ScrollYSensitivity = 50;
+std::string g_OriginalFilePath;
 
 //Forward Declarations
 bool CreateMainWindow(HINSTANCE hInstance);
@@ -48,12 +49,22 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 std::string ShowManualText(void);
 void ResetScrollbarSize();
 void RebuildTemplateButtons();
-
+bool SelectFile(HWND hwnd, std::string& path);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
 	MSG Msg;
+	char ownPth[MAX_PATH];
+	HMODULE hModule = GetModuleHandle(NULL);
+	if (hModule != NULL) {
+		GetModuleFileName(hModule, ownPth, (sizeof(ownPth)));
+		g_OriginalFilePath = ownPth;
+		g_OriginalFilePath.erase(g_OriginalFilePath.find_last_of("\\") + 1, g_OriginalFilePath.size());
+	}
+	else {
+		MessageBox(NULL, "Initialization failure", "Error!", MB_ICONEXCLAMATION | MB_OK);
+	}
 
 	if (!RegisterMainWindow(hInstance)) {
 		return 0;
@@ -142,154 +153,181 @@ unsigned ApproximateWindowHeight()
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch (msg)
-	{
-	case WM_CREATE:
-		AddMenu(hwnd);
-		AddControls(hwnd);
-		break;
-	case WM_COMMAND:
-		if (wParam == ID_FILE_EXIT) { 
-			PostQuitMessage(0); 
-		}
-		else if (wParam == ID_ABOUT) {
-			MessageBox(NULL, "Just a quick template manager to copy templates on a button press.\n\n-Marius Ventus", "About", MB_OK | MB_ICONINFORMATION);
-		}
-		else if (wParam == ID_HELP) {
-			MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
-		}
-		else if (wParam == ID_OPEN_SETTINGS) {
-			OpenSettingsWindow(hwnd);
-		}
-		else if (wParam == ID_EDIT_TEMPLATES) {
-			OpenEditWindow(hwnd);
-		}
-		else if (wParam == ID_CLEAR_TEMPLATES) {
-			if (MessageBox(hwnd, "This will delete all current templates permenantly?\nAre sure you want to do this?", "Warning",
-				MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
-				g_Templates.ClearAllTemplates();
-				g_Templates.SaveTemplates();
-				//Shift Window Size
-				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-				//New Button
-				RebuildTemplateButtons();
-				ResetScrollbarSize();
+	try {
+		switch (msg)
+		{
+		case WM_CREATE:
+			AddMenu(hwnd);
+			AddControls(hwnd);
+			break;
+		case WM_COMMAND:
+			if (wParam == ID_FILE_EXIT) {
+				PostQuitMessage(0);
 			}
-		}
-		else if (wParam == ID_RESTORE_DEFAULT_TEMPLATES) {
-			if (MessageBox(hwnd, "This will overwrite all current templates?\nAre sure you want to do this?", "Warning",
-				MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
-				g_Templates.ResetToDefaultTemplates();
-				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-				//New Button
-				RebuildTemplateButtons();
-				ResetScrollbarSize();
+			else if (wParam == ID_ABOUT) {
+				MessageBox(NULL, "Just a quick template manager to copy templates on a button press.\n\n-Marius Ventus", "About", MB_OK | MB_ICONINFORMATION);
 			}
-		}
-		else if (wParam == ID_IN_PROGRESS) {
-			MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
-		}
-		else if (wParam == ID_MANUAL) {
-			MessageBox(NULL, ShowManualText().c_str(), "Manual", MB_OK | MB_ICONEXCLAMATION);
-		}
-		else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_Templates.GetTemplateCount()) {
-			unsigned butNum = wParam - ID_TEMPBASE;
-			std::string stringNote = g_Templates.GetTemplateXContent(butNum);
-			//Copy to Clipboard
-			OpenClipboard(hwnd);
-			EmptyClipboard();
-			HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, stringNote.size() + 1);
-			if (!hg) {
-				CloseClipboard();
+			else if (wParam == ID_HELP) {
+				MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
 			}
-			else {
-				memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
-				GlobalUnlock(hg);
-				SetClipboardData(CF_TEXT, hg);
-				CloseClipboard();
+			else if (wParam == ID_OPEN_SETTINGS) {
+				OpenSettingsWindow(hwnd);
 			}
-			GlobalFree(hg);
-		}
-		break;
+			else if (wParam == ID_EDIT_TEMPLATES) {
+				OpenEditWindow(hwnd);
+			}
+			else if (wParam == ID_CLEAR_TEMPLATES) {
+				if (MessageBox(hwnd, "This will delete all current templates permenantly?\nAre sure you want to do this?", "Warning",
+					MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+					g_Templates.ClearAllTemplates();
+					g_Templates.SaveTemplates();
+					//Shift Window Size
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+					//New Button
+					RebuildTemplateButtons();
+					ResetScrollbarSize();
+				}
+			}
+			else if (wParam == ID_RESTORE_DEFAULT_TEMPLATES) {
+				if (MessageBox(hwnd, "This will overwrite all current templates?\nAre sure you want to do this?", "Warning",
+					MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+					g_Templates.ResetToDefaultTemplates();
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+					//New Button
+					RebuildTemplateButtons();
+					ResetScrollbarSize();
+				}
+			}
+			else if (wParam == ID_IN_PROGRESS) {
+				MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
+			}
+			else if (wParam == ID_MANUAL) {
+				MessageBox(NULL, ShowManualText().c_str(), "Manual", MB_OK | MB_ICONEXCLAMATION);
+			}
+			else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_Templates.GetTemplateCount()) {
+				unsigned butNum = wParam - ID_TEMPBASE;
+				std::string stringNote = g_Templates.GetTemplateXContent(butNum);
+				if (g_Templates.GetTemplateXID(butNum) == 0) { //0 is text, 1 is files
+					//Copy to Clipboard
+					OpenClipboard(hwnd);
+					EmptyClipboard();
+					HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, stringNote.size() + 1);
+					if (!hg) {
+						CloseClipboard();
+					}
+					else {
+						memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
+						GlobalUnlock(hg);
+						SetClipboardData(CF_TEXT, hg);
+						CloseClipboard();
+					}
+					GlobalFree(hg);
+				}
+				else if (g_Templates.GetTemplateXID(butNum) == 1) {
+					ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
+				}
+				else {
+					//Copy to Clipboard
+					OpenClipboard(hwnd);
+					EmptyClipboard();
+					HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, stringNote.size() + 1);
+					if (!hg) {
+						CloseClipboard();
+					}
+					else {
+						memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
+						GlobalUnlock(hg);
+						SetClipboardData(CF_TEXT, hg);
+						CloseClipboard();
+					}
+					GlobalFree(hg);
+					MessageBox(NULL, "Damaged or Unknown Template TypeID. Copied entry to Clipboard as Text.", "Template Error", MB_OK | MB_ICONERROR);
+				}
+			}
+			break;
 
-	case WM_VSCROLL:
-	{
-		auto action = LOWORD(wParam);
-		HWND hScroll = (HWND)lParam;
-		int pos = -1;
-		if (action == SB_THUMBPOSITION || action == SB_THUMBTRACK) {
-			pos = HIWORD(wParam);
+		case WM_VSCROLL:
+		{
+			auto action = LOWORD(wParam);
+			HWND hScroll = (HWND)lParam;
+			int pos = -1;
+			if (action == SB_THUMBPOSITION || action == SB_THUMBTRACK) {
+				pos = HIWORD(wParam);
+			}
+			else if (action == SB_LINEDOWN) {
+				pos = g_ScrollY + g_ScrollYSensitivity;
+			}
+			else if (action == SB_LINEUP) {
+				pos = g_ScrollY - g_ScrollYSensitivity;
+			}
+			if (pos == -1) {
+				break;
+			}
+			//Keeps repeated commands (IE Buttons) from scrolling to infinity
+			SCROLLINFO si = { 0 };
+			si.cbSize = sizeof(SCROLLINFO);
+			si.fMask = SIF_POS;
+			si.nPos = pos;
+			si.nTrackPos = 0;
+			SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+			GetScrollInfo(hMainWindow, SB_VERT, &si);
+			pos = si.nPos;
+			//As far as I can tell, this was for compatability somehow, but no idea how. I fought all day with this scrollbar, so I don't need to know how at this point.
+			//POINT pt;
+			//pt.x = 0;
+			//pt.y = pos - g_scrollY;
+			////auto hdc = GetDC(hMainWindow);
+			////LPtoDP(hdc, &pt, 1);
+			////ReleaseDC(hMainWindow, hdc);
+			ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
+			g_ScrollY = pos;
 		}
-		else if (action == SB_LINEDOWN) {
-			pos = g_ScrollY + g_ScrollYSensitivity;
-		}
-		else if (action == SB_LINEUP) {
-			pos = g_ScrollY - g_ScrollYSensitivity;
-		}
-		if (pos == -1) {
+		break;
+		case WM_SIZE:
+			ResetScrollbarSize();
 			break;
+		case WM_MOUSEWHEEL:
+		{
+			int pos = -1;
+			if (GET_WHEEL_DELTA_WPARAM(wParam) > 0) {
+				pos = g_ScrollY - g_ScrollYSensitivity;
+				//mouse wheel scrolled up
+			}
+			else if (GET_WHEEL_DELTA_WPARAM(wParam) < 0) {
+				pos = g_ScrollY + g_ScrollYSensitivity;
+				//mouse wheel scrolled down
+			}
+			else { //always goes here
+				//unknown mouse wheel scroll direction
+				break;
+			}
+			if (pos == -1) {
+				break;
+			}
+			SCROLLINFO si = { 0 };
+			si.cbSize = sizeof(SCROLLINFO);
+			si.fMask = SIF_POS;
+			si.nPos = pos;
+			si.nTrackPos = 0;
+			SetScrollInfo(hMainWindow, SB_VERT, &si, true);
+			GetScrollInfo(hMainWindow, SB_VERT, &si);
+			pos = si.nPos;
+			ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
+			g_ScrollY = pos;
 		}
-		//Keeps repeated commands (IE Buttons) from scrolling to infinity
-		SCROLLINFO si = { 0 };
-		si.cbSize = sizeof(SCROLLINFO);
-		si.fMask = SIF_POS;
-		si.nPos = pos;
-		si.nTrackPos = 0;
-		SetScrollInfo(hMainWindow, SB_VERT, &si, true);
-		GetScrollInfo(hMainWindow, SB_VERT, &si);
-		pos = si.nPos;
-		//As far as I can tell, this was for compatability somehow, but no idea how. I fought all day with this scrollbar, so I don't need to know how at this point.
-		//POINT pt;
-		//pt.x = 0;
-		//pt.y = pos - g_scrollY;
-		////auto hdc = GetDC(hMainWindow);
-		////LPtoDP(hdc, &pt, 1);
-		////ReleaseDC(hMainWindow, hdc);
-		ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
-		g_ScrollY = pos;
+		break;
+		case WM_CLOSE:
+			DestroyWindow(hwnd);
+			break;
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			break;
+		default:
+			return DefWindowProc(hwnd, msg, wParam, lParam);
+		}
 	}
-	break;
-	case WM_SIZE:
-		ResetScrollbarSize();
-		break;
-	case WM_MOUSEWHEEL: 
-	{
-		int pos = -1;
-		if (GET_WHEEL_DELTA_WPARAM(wParam) > 0) {
-			pos = g_ScrollY - g_ScrollYSensitivity;
-			//mouse wheel scrolled up
-		}
-		else if (GET_WHEEL_DELTA_WPARAM(wParam) < 0) {
-			pos = g_ScrollY + g_ScrollYSensitivity;
-			//mouse wheel scrolled down
-		}
-		else { //always goes here
-			//unknown mouse wheel scroll direction
-			break;
-		}
-		if (pos == -1) {
-			break;
-		}
-		SCROLLINFO si = { 0 };
-		si.cbSize = sizeof(SCROLLINFO);
-		si.fMask = SIF_POS;
-		si.nPos = pos;
-		si.nTrackPos = 0;
-		SetScrollInfo(hMainWindow, SB_VERT, &si, true);
-		GetScrollInfo(hMainWindow, SB_VERT, &si);
-		pos = si.nPos;
-		ScrollWindow(hMainWindow, 0, -(pos - g_ScrollY), NULL, NULL);
-		g_ScrollY = pos;
-	}
-	break;
-	case WM_CLOSE:
-		DestroyWindow(hwnd);
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	default:
-		return DefWindowProc(hwnd, msg, wParam, lParam);
+	catch (std::exception e) {
+		MessageBox(NULL, e.what(), "Error!", MB_ICONERROR | MB_OK);
 	}
 	return 0;
 }
@@ -396,48 +434,53 @@ void OpenSettingsWindow(HWND hWnd) {
 
 
 LRESULT CALLBACK SetWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
-	switch (msg) {
-	case WM_COMMAND:
-		switch (wp)
-		{
-		case IDCANCEL:
+	try {
+		switch (msg) {
+		case WM_COMMAND:
+			switch (wp)
+			{
+			case IDCANCEL:
+				EnableWindow(hMainWindow, true);
+				DestroyWindow(hWnd);
+				break;
+			case IDOK:
+				//Input
+				char setName[100] = "";
+				GetWindowText(hName, setName, 100);
+				g_Settings.SetName(setName);
+				//
+				char setEmail[100] = "";
+				GetWindowText(hEmail, setEmail, 100);
+				g_Settings.SetEmail(setEmail);
+				//
+				char setMisc1[100] = "";
+				GetWindowText(hMisc1, setMisc1, 100);
+				g_Settings.SetMisc1(setMisc1);
+				//
+				char setMisc2[100] = "";
+				GetWindowText(hMisc2, setMisc2, 100);
+				g_Settings.SetMisc2(setMisc2);
+				//
+				char setMisc3[100] = "";
+				GetWindowText(hMisc3, setMisc3, 100);
+				g_Settings.SetMisc3(setMisc3);
+				//Save
+				g_Settings.SaveSettingsToFile();
+				EnableWindow(hMainWindow, true);
+				DestroyWindow(hWnd);
+				break;
+			}
+			break;
+		case WM_CLOSE:
 			EnableWindow(hMainWindow, true);
 			DestroyWindow(hWnd);
 			break;
-		case IDOK:
-			//Input
-			char setName[100] = "";
-			GetWindowText(hName, setName, 100);
-			g_Settings.SetName(setName);
-			//
-			char setEmail[100] = "";
-			GetWindowText(hEmail, setEmail, 100);
-			g_Settings.SetEmail(setEmail);
-			//
-			char setMisc1[100] = "";
-			GetWindowText(hMisc1, setMisc1, 100);
-			g_Settings.SetMisc1(setMisc1);
-			//
-			char setMisc2[100] = "";
-			GetWindowText(hMisc2, setMisc2, 100);
-			g_Settings.SetMisc2(setMisc2);
-			//
-			char setMisc3[100] = "";
-			GetWindowText(hMisc3, setMisc3, 100);
-			g_Settings.SetMisc3(setMisc3);
-			//Save
-			g_Settings.SaveSettingsToFile();
-			EnableWindow(hMainWindow, true);
-			DestroyWindow(hWnd);
-			break;
+		default:
+			return DefWindowProc(hWnd, msg, wp, lp);
 		}
-		break;
-	case WM_CLOSE:
-		EnableWindow(hMainWindow, true);
-		DestroyWindow(hWnd);
-		break;
-	default:
-		return DefWindowProc(hWnd, msg, wp, lp);
+	}
+	catch (std::exception e) {
+		MessageBox(NULL, e.what(), "Error!", MB_ICONERROR | MB_OK);
 	}
 	return 0;
 }
@@ -483,10 +526,11 @@ void OpenEditWindow(HWND hWnd) {
 	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
 		20, 85, 440, 200, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 
-	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add", WS_VISIBLE | WS_CHILD, 360, 300, 100, 40, hEditWindow, (HMENU)1, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add Text", WS_VISIBLE | WS_CHILD, 360, 300, 100, 40, hEditWindow, (HMENU)1, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add File", WS_VISIBLE | WS_CHILD, 260, 300, 100, 40, hEditWindow, (HMENU)4, NULL, NULL);
 
 	CreateWindowEx(NULL, "STATIC", "Template for Removal (Button Text)", WS_CHILD | WS_VISIBLE,
-		20, 325, 250, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
+		20, 325, 230, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
 	hRemoveTemplateTitle = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
 		20, 350, 440, 25, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 
@@ -500,83 +544,124 @@ void OpenEditWindow(HWND hWnd) {
 
 
 LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
-	switch (msg) {
-	case WM_CLOSE:
-		EnableWindow(hMainWindow, true);
-		DestroyWindow(hWnd);
-		break;
-	default:
-		return DefWindowProc(hWnd, msg, wp, lp);
-	case WM_COMMAND:
-		char title[100] = "";
-		std::string titleString = "";
-		char text[5000] = "";
-		std::string textString = "";
-		unsigned newID = g_Templates.GetTemplateCount() + 1;
-		switch (wp)
-		{
-		case 1:
-			GetWindowText(hAddTemplateTitle, title, 100);
-			titleString = title;
-			GetWindowText(hAddTemplateText, text, 5000);
-			textString = text;
-			if (!textString.empty() && !titleString.empty()) {
-				if (g_Templates.FindTemplate(titleString)) {
-					if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
-						MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
-						g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
+	try {
+		switch (msg) {
+		case WM_CLOSE:
+			EnableWindow(hMainWindow, true);
+			DestroyWindow(hWnd);
+			break;
+		default:
+			return DefWindowProc(hWnd, msg, wp, lp);
+		case WM_COMMAND:
+			char title[100] = "";
+			std::string titleString = "";
+			char text[5000] = "";
+			std::string textString = "";
+			switch (wp)
+			{
+			case 1:
+				GetWindowText(hAddTemplateTitle, title, 100);
+				titleString = title;
+				GetWindowText(hAddTemplateText, text, 5000);
+				textString = text;
+				if (!textString.empty() && !titleString.empty()) {
+					if (g_Templates.FindTemplate(titleString)) {
+						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
+							MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+							g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
+							g_Templates.SaveTemplates();
+							MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+						}
+					}
+					else {
+						g_Templates.AddTemplate(0, titleString, textString);
 						g_Templates.SaveTemplates();
-						MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+						MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+					}
+					//Shift Window Size
+					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+					//New Button
+					RebuildTemplateButtons();
+					ResetScrollbarSize();
+				}
+				else {
+					MessageBox(NULL, "No template title or content detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+				}
+				break;
+			case 2:
+				GetWindowText(hRemoveTemplateTitle, title, 100);
+				titleString = title;
+				if (!titleString.empty()) {
+					if (g_Templates.RemoveTemplate(titleString)) {
+						MessageBox(NULL, "Removed Template!", "Removed!", MB_OK | MB_ICONEXCLAMATION);
+						g_Templates.SaveTemplates();
+						//Shift Window Size
+						SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+						RebuildTemplateButtons();
+						ResetScrollbarSize();
+					}
+					else
+					{
+						MessageBox(NULL, "Removal Failed?\nPlease check the entered template title!", "Not Found?", MB_OK | MB_ICONEXCLAMATION);
 					}
 				}
 				else {
-					g_Templates.AddTemplate(newID, titleString, textString);
-					g_Templates.SaveTemplates();
-					MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+					MessageBox(NULL, "No template title detected for removal!", "Error!", MB_OK | MB_ICONEXCLAMATION);
 				}
-				//Shift Window Size
-				SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-				//New Button
-				RebuildTemplateButtons();
-				ResetScrollbarSize();
-			}
-			else {
-				MessageBox(NULL, "No template title or content detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
-			}
-			break;
-		case 2:
-			GetWindowText(hRemoveTemplateTitle, title, 100);
-			titleString = title;
-			if (!titleString.empty()) {
-				if (g_Templates.RemoveTemplate(titleString)) {
-					MessageBox(NULL, "Removed Template!", "Removed!", MB_OK | MB_ICONEXCLAMATION);
-					g_Templates.SaveTemplates();
+				break;
+			case 3:
+				EnableWindow(hMainWindow, true);
+				DestroyWindow(hWnd);
+				break;
+			case 4:
+				GetWindowText(hAddTemplateTitle, title, 100);
+				titleString = title;
+				if (!titleString.empty()) {
+					if (g_Templates.FindTemplate(titleString)) {
+						//Template does Exist
+						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?", MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+							std::string targetPath = "";
+							if (SelectFile(hWnd, targetPath)) {
+								g_Templates.RemoveTemplate(titleString);
+								g_Templates.AddTemplate(1, titleString, targetPath);
+								g_Templates.SaveTemplates();
+								MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+							}
+						}
+					}
+					else {
+						//Template does not Exist
+						std::string targetPath = "";
+						if (SelectFile(hWnd, targetPath)) {
+							g_Templates.AddTemplate(1, titleString, targetPath);
+							g_Templates.SaveTemplates();
+							MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+
+						}
+					}
 					//Shift Window Size
 					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
 					RebuildTemplateButtons();
 					ResetScrollbarSize();
 				}
-				else
-				{
-					MessageBox(NULL, "Removal Failed?\nPlease check the entered template title!", "Not Found?", MB_OK | MB_ICONEXCLAMATION);
+				else {
+					MessageBox(NULL, "No template title detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
 				}
+				break;
 			}
-			else {
-				MessageBox(NULL, "No template title detected for removal!", "Error!", MB_OK | MB_ICONEXCLAMATION);
-			}
-			break;
-		case 3:
-			EnableWindow(hMainWindow, true);
-			DestroyWindow(hWnd);
 			break;
 		}
-		break;
+	}
+	catch(std::exception& e){
+		MessageBox(NULL, e.what(), "Error!", MB_ICONERROR | MB_OK);
 	}
 	return 0;
 }
 
 std::string ShowManualText(void) {
-	std::string text = "When creating a template, certain flags can be used to replace sections of text with unique outputs when the template is copied.\n\nThis includes adding times, dates, and even custom items from the settings menu!\nThe current flags include:\n";
+	std::string text = "When creating a text template, certain flags can be used to replace sections of text with unique outputs when the template is copied.";
+	
+	text.append("\n\nThis includes adding times, dates, and even custom items from the settings menu!\nThe current flags include:\n");
 	text.append("\n> [Date] or [Today] includes the current date.\n");
 	text.append("\n> [Tomorrow] and [Yesterday] includes the tomorrow and yesterday's dates respectively.\n");
 	text.append("\n> [TodayWeekday], [TomorrowWeekday], and [YesterdayWeekday] includes the respective day's weekday.\n");
@@ -639,4 +724,28 @@ void RebuildTemplateButtons()
 			15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
+}
+
+bool SelectFile(HWND hwnd, std::string& path)
+{
+	OPENFILENAME ofn = { 0 };
+	char file_name[MAX_PATH] = { 0 };
+
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = hwnd;
+	ofn.lpstrFile = file_name;
+	ofn.lpstrFile[0] = '\0';
+	ofn.nMaxFile = MAX_PATH;
+	ofn.lpstrFilter = "All Files\0*.*\0";
+	ofn.nFilterIndex = 1;
+
+	bool fileSelected = GetOpenFileName(&ofn);
+
+	path = ofn.lpstrFile;
+	//if (fileSelected != false) {
+	//	std::filesystem::create_directories(".\\Templates\\Copies");
+	//	std::filesystem::copy(ofn.lpstrFile, ".\\Templates\\Copies", std::filesystem::copy_options::overwrite_existing);
+	//}
+
+	return fileSelected;
 }

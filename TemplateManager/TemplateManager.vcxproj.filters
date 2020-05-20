@@ -19,6 +19,9 @@
     <Filter Include="Settings">
       <UniqueIdentifier>{1b830bc7-12e4-4285-b7a1-64f9233be04a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Templates\DefaultFiles">
+      <UniqueIdentifier>{5621b25d-a108-4249-a996-7b42058efeee}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -40,6 +43,9 @@
   <ItemGroup>
     <None Include="..\README.md">
       <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Templates\DefaultCopies\FakeEmail.docx">
+      <Filter>Templates\DefaultFiles</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
