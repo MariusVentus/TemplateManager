@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <direct.h>
 #include <string>
 #include "SettingsHandler.h"
 #include "TimeClock.h"
@@ -20,18 +21,17 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.5";
+const char g_WindowTitle[] = "Template Manager V0.0.7";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 TimeClock g_Timer;
 TemplateManager g_Templates(g_Settings, g_Timer);
-std::vector<HWND> hTemplates;
+std::vector<HWND> hTemplates, hUp, hDown;
 RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
 int g_ScrollY = 0;
 int g_ScrollYSensitivity = 50;
-std::string g_OriginalFilePath;
 
 //Forward Declarations
 bool CreateMainWindow(HINSTANCE hInstance);
@@ -55,16 +55,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
 	MSG Msg;
-	char ownPth[MAX_PATH];
-	HMODULE hModule = GetModuleHandle(NULL);
-	if (hModule != NULL) {
-		GetModuleFileName(hModule, ownPth, (sizeof(ownPth)));
-		g_OriginalFilePath = ownPth;
-		g_OriginalFilePath.erase(g_OriginalFilePath.find_last_of("\\") + 1, g_OriginalFilePath.size());
-	}
-	else {
-		MessageBox(NULL, "Initialization failure", "Error!", MB_ICONEXCLAMATION | MB_OK);
-	}
 
 	if (!RegisterMainWindow(hInstance)) {
 		return 0;
@@ -224,7 +214,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					GlobalFree(hg);
 				}
 				else if (g_Templates.GetTemplateXID(butNum) == 1) {
-					ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
+					if (g_Templates.FileExists(stringNote)) {
+						ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
+					}
+					else {
+						MessageBox(NULL, "Template Error: File Not Found.\n\nThe file is no longer present at the original location, or the filepath is no longer valid.", "Template Error: File Not Found", MB_OK | MB_ICONERROR);
+					}
 				}
 				else {
 					//Copy to Clipboard
@@ -242,6 +237,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					}
 					GlobalFree(hg);
 					MessageBox(NULL, "Damaged or Unknown Template TypeID. Copied entry to Clipboard as Text.", "Template Error", MB_OK | MB_ICONERROR);
+				}
+			}
+			else if (wParam >= ID_TEMPBASE + g_Templates.GetTemplateCount() && wParam < ID_TEMPBASE + (2*g_Templates.GetTemplateCount())) {
+				unsigned butNum = wParam - ID_TEMPBASE - g_Templates.GetTemplateCount();
+				if (g_Templates.SwapUp(butNum)) {
+					g_Templates.SaveTemplates();
+					RebuildTemplateButtons();
+				}
+			}
+			else if (wParam >= ID_TEMPBASE + (2 * g_Templates.GetTemplateCount()) && wParam < ID_TEMPBASE + (3 * g_Templates.GetTemplateCount())) {
+				unsigned butNum = wParam - ID_TEMPBASE - (2*g_Templates.GetTemplateCount());
+				if (g_Templates.SwapDown(butNum)) {
+					g_Templates.SaveTemplates();
+					RebuildTemplateButtons();
 				}
 			}
 			break;
@@ -359,13 +368,30 @@ void AddControls(HWND hwnd)
 {
 	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates.push_back({ 0 });
+		hUp.push_back({ 0 });
+		hDown.push_back({ 0 });
 	}
 
 	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
-			15, g_LastCreatedY, 285, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
+			30, g_LastCreatedY, 280, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
+
+	unsigned localLastY = 15;
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+		hUp[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " + ", WS_CHILD | WS_VISIBLE,
+			5, localLastY, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + g_Templates.GetTemplateCount() + i), GetModuleHandle(NULL), NULL);
+		localLastY += 50;
+	}
+
+	localLastY = 35;
+	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
+		hDown[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " - ", WS_CHILD | WS_VISIBLE,
+			5, localLastY, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + (2 * g_Templates.GetTemplateCount()) + i), GetModuleHandle(NULL), NULL);
+		localLastY += 50;
+	}
+
 }
 
 void RegisterSettingsWindow(HINSTANCE hInst) {
@@ -568,6 +594,7 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					if (g_Templates.FindTemplate(titleString)) {
 						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
 							MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+							g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), 0);
 							g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
 							g_Templates.SaveTemplates();
 							MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
@@ -622,10 +649,14 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?", MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
 							std::string targetPath = "";
 							if (SelectFile(hWnd, targetPath)) {
-								g_Templates.RemoveTemplate(titleString);
-								g_Templates.AddTemplate(1, titleString, targetPath);
+								g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), 1);
+								g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), targetPath);
 								g_Templates.SaveTemplates();
 								MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+								//Shift Window Size
+								SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+								RebuildTemplateButtons();
+								ResetScrollbarSize();
 							}
 						}
 					}
@@ -636,13 +667,12 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 							g_Templates.AddTemplate(1, titleString, targetPath);
 							g_Templates.SaveTemplates();
 							MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
-
+							//Shift Window Size
+							SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+							RebuildTemplateButtons();
+							ResetScrollbarSize();
 						}
 					}
-					//Shift Window Size
-					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-					RebuildTemplateButtons();
-					ResetScrollbarSize();
 				}
 				else {
 					MessageBox(NULL, "No template title detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -709,25 +739,25 @@ void RebuildTemplateButtons()
 	//Remove Buttons
 	for (unsigned i = 0; i < hTemplates.size(); i++) {
 		DestroyWindow(hTemplates[i]);
+		DestroyWindow(hUp[i]);
+		DestroyWindow(hDown[i]);
 	}
 
 	//Clear all window Templates
 	hTemplates.clear();
-	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
-		hTemplates.push_back({ 0 });
-	}
+	hUp.clear();
+	hDown.clear();
 
-	//Rebuild Buttons
+	//Re-add
 	g_LastCreatedY = 15;
-	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
-		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
-			15, g_LastCreatedY, 285, 40, hMainWindow, (HMENU)(ID_TEMPBASE + i), GetModuleHandle(NULL), NULL);
-		g_LastCreatedY += 50;
-	}
+	AddControls(hMainWindow);
+
 }
 
 bool SelectFile(HWND hwnd, std::string& path)
 {
+	char* buffer = _getcwd(NULL, 0);
+
 	OPENFILENAME ofn = { 0 };
 	char file_name[MAX_PATH] = { 0 };
 
@@ -747,5 +777,9 @@ bool SelectFile(HWND hwnd, std::string& path)
 	//	std::filesystem::copy(ofn.lpstrFile, ".\\Templates\\Copies", std::filesystem::copy_options::overwrite_existing);
 	//}
 
+	//char* buffer2 = _getcwd(NULL, 0);
+	_chdir(buffer);
+	//buffer = _getcwd(NULL, 0);
+	free(buffer);
 	return fileSelected;
 }

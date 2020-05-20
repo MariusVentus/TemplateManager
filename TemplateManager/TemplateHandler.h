@@ -12,9 +12,10 @@ private:
 	void RefreshTemplates(void);
 	void RefreshTemplates(const std::string& inFileLoc);
 public:
-	unsigned GetTemplateXID(unsigned inX) const { return m_Templates[inX].m_ID; }
-	std::string GetTemplateXTitle(unsigned inX) const { return m_Templates[inX].m_Title; }
+	unsigned GetTemplateXID(unsigned inX) const { return m_Templates[inX].GetID(); }
+	std::string GetTemplateXTitle(unsigned inX) const { return m_Templates[inX].GetTitle(); }
 	std::string GetTemplateXContent(unsigned inX);
+	void OverwriteTemplateID(unsigned tempNum, unsigned inID);
 	void OverwriteTemplateContent(unsigned tempNum, const std::string inContent);
 	unsigned GetTemplateCount(void) const { return m_Templates.size(); }
 	std::string GetTemplateFileLoc(void) const { return m_TemplateFile; }
@@ -32,9 +33,12 @@ public:
 	bool FileExists(const std::string& inFilename);
 	std::string GetDefaultFilesDir(void) const { return m_TemplateDefaultFilesDir; }
 
+	bool SwapUp(unsigned iterator);
+	bool SwapDown(unsigned iterator);
+
 private: 
 	const std::string m_TemplateFile = "Templates\\Templates.txt";
-	const std::string m_TemplateDefaultFile = "Templates\\Default Templates.txt";
+	const std::string m_TemplateDefaultFile = "Templates\\DefaultFiles\\Default Templates.txt";
 	const std::string m_TemplateDefaultFilesDir = "Templates\\DefaultFiles";
 
 	const SettingsHandler& m_Settings;
@@ -46,12 +50,16 @@ private:
 	public:
 		Templates(unsigned id, const std::string& title, const std::string& content);
 		Templates(const Templates& other);
+		unsigned GetID(void) const { return m_ID; }
+		std::string GetTitle(void) const { return m_Title; }
 		std::string GetContent(void) const { return m_Content; }
+
+		void OverwriteID(unsigned ID) { m_ID = ID; }
 		void OverwriteContent(const std::string content) { m_Content = content; }
 
-		const unsigned m_ID; //Repurposing as a TypeID rather than uniue identifier. Not lazy, smrt. 
-		const std::string m_Title;
 	private:
+		unsigned m_ID; //Repurposing as a TypeID rather than uniue identifier. Not lazy, smrt. 
+		std::string m_Title;
 		std::string m_Content;
 	};
 

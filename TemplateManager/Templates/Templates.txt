@@ -51,3 +51,6 @@ Yesterday Weekday
 [Template]0
 Full Date and Time
 [FullTimeNDate]
+[Template]1
+Fake Email
+Templates\DefaultFiles\FakeEmail.docx

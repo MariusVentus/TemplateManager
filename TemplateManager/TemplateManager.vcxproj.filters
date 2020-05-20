@@ -68,8 +68,8 @@
     <Text Include="Templates\Templates.txt">
       <Filter>Templates</Filter>
     </Text>
-    <Text Include="Templates\Default Templates.txt">
-      <Filter>Templates</Filter>
+    <Text Include="Templates\DefaultFiles\Default Templates.txt">
+      <Filter>Templates\DefaultFiles</Filter>
     </Text>
   </ItemGroup>
   <ItemGroup>

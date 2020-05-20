@@ -108,7 +108,7 @@ void TemplateManager::RefreshTemplates(const std::string& inFileLoc)
 
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
-	if (m_Templates[inX].m_ID == 0) {
+	if (m_Templates[inX].GetID() == 0) {
 		std::string localContent = m_Templates[inX].GetContent();
 		std::string flags[15] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]",
 			"[Time]","[FullTimeNDate]", "[Today]", "[Tomorrow]", "[Yesterday]","[TodayWeekday]", "[TomorrowWeekday]", "[YesterdayWeekday]" };
@@ -191,6 +191,11 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	}
 }
 
+void TemplateManager::OverwriteTemplateID(unsigned tempNum, unsigned inID)
+{
+	m_Templates[tempNum].OverwriteID(inID);
+}
+
 void TemplateManager::OverwriteTemplateContent(unsigned tempNum, const std::string inContent)
 {
 	auto outString = inContent;
@@ -213,7 +218,7 @@ bool TemplateManager::FindTemplate(const std::string& inTitle) const
 {
 	bool foundTemplate = false;
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
-		if (m_Templates[i].m_Title == inTitle) {
+		if (m_Templates[i].GetTitle() == inTitle) {
 			foundTemplate = true;
 		}
 	}
@@ -224,7 +229,7 @@ unsigned TemplateManager::FindTemplateIterator(const std::string & inTitle) cons
 {
 	unsigned tempIter = 0;
 	while (tempIter < m_Templates.size()){
-		if (m_Templates[tempIter].m_Title == inTitle) {
+		if (m_Templates[tempIter].GetTitle() == inTitle) {
 			break;
 		}
 		tempIter++;
@@ -240,7 +245,7 @@ bool TemplateManager::RemoveTemplate(const std::string& inTitle)
 	bool foundTemplate = false;
 	std::vector<Templates> TempList;
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
-		if (m_Templates[i].m_Title != inTitle) {
+		if (m_Templates[i].GetTitle() != inTitle) {
 			TempList.push_back(m_Templates[i]);
 		}
 		else {
@@ -265,9 +270,9 @@ void TemplateManager::SaveTemplates(void) const
 	std::string outString = ";;[Template]TypeID\n;;Title\n;;Content";
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
 		outString.append("\n[Template]");
-		outString.append(std::to_string(m_Templates[i].m_ID));
+		outString.append(std::to_string(m_Templates[i].GetID()));
 		outString.append("\n");
-		outString.append(m_Templates[i].m_Title);
+		outString.append(m_Templates[i].GetTitle());
 		outString.append("\n");
 		outString.append(m_Templates[i].GetContent());
 	}
@@ -295,6 +300,32 @@ bool TemplateManager::FileExists(const std::string & inFilename)
 {
 	std::ifstream in(inFilename);
 	if (in) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+bool TemplateManager::SwapUp(unsigned iterator)
+{
+	if (iterator > 0) {
+		Templates Temp = m_Templates[iterator - 1];
+		m_Templates[iterator - 1] = m_Templates[iterator];
+		m_Templates[iterator] = Temp;
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+bool TemplateManager::SwapDown(unsigned iterator)
+{
+	if (iterator < m_Templates.size() - 1) {
+		Templates Temp = m_Templates[iterator + 1];
+		m_Templates[iterator + 1] = m_Templates[iterator];
+		m_Templates[iterator] = Temp;
 		return true;
 	}
 	else {
