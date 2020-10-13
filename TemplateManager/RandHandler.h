@@ -5,10 +5,9 @@ class RandHandler {
 public:
 	RandHandler();
 	unsigned Generate(unsigned base, unsigned range);
-
+	std::mt19937 PrimeGenerator(void);
 
 private:
 	//Vars
-	std::random_device rd;
 	std::mt19937 rng;
 };

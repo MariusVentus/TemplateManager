@@ -27,7 +27,7 @@ SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 TimeClock g_Timer;
 TemplateManager g_Templates(g_Settings, g_Timer);
-std::vector<HWND> hTemplates, hUp, hDown;
+std::vector<HWND> hTemplates, hUp, hDown, hEdit;
 RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
 int g_ScrollY = 0;
@@ -370,28 +370,20 @@ void AddControls(HWND hwnd)
 		hTemplates.push_back({ 0 });
 		hUp.push_back({ 0 });
 		hDown.push_back({ 0 });
+		hEdit.push_back({ 0 });
 	}
 
 	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
-			30, g_LastCreatedY, 280, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
+			30, g_LastCreatedY, 260, 40, hwnd, (HMENU)(ID_TEMPBASE+i), GetModuleHandle(NULL), NULL);
+		hUp[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " + ", WS_CHILD | WS_VISIBLE,
+			5, g_LastCreatedY, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + g_Templates.GetTemplateCount() + i), GetModuleHandle(NULL), NULL);
+		hDown[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " - ", WS_CHILD | WS_VISIBLE,
+			5, g_LastCreatedY + 20, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + (2 * g_Templates.GetTemplateCount()) + i), GetModuleHandle(NULL), NULL);
+		hEdit[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", "E", WS_CHILD | WS_VISIBLE,
+			290, g_LastCreatedY, 20, 40, hwnd, (HMENU)(ID_TEMPBASE + (3 * g_Templates.GetTemplateCount()) + i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
-
-	unsigned localLastY = 15;
-	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
-		hUp[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " + ", WS_CHILD | WS_VISIBLE,
-			5, localLastY, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + g_Templates.GetTemplateCount() + i), GetModuleHandle(NULL), NULL);
-		localLastY += 50;
-	}
-
-	localLastY = 35;
-	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
-		hDown[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", " - ", WS_CHILD | WS_VISIBLE,
-			5, localLastY, 20, 20, hwnd, (HMENU)(ID_TEMPBASE + (2 * g_Templates.GetTemplateCount()) + i), GetModuleHandle(NULL), NULL);
-		localLastY += 50;
-	}
-
 }
 
 void RegisterSettingsWindow(HINSTANCE hInst) {
@@ -741,12 +733,14 @@ void RebuildTemplateButtons()
 		DestroyWindow(hTemplates[i]);
 		DestroyWindow(hUp[i]);
 		DestroyWindow(hDown[i]);
+		DestroyWindow(hEdit[i]);
 	}
 
 	//Clear all window Templates
 	hTemplates.clear();
 	hUp.clear();
 	hDown.clear();
+	hEdit.clear();
 
 	//Re-add
 	g_LastCreatedY = 15;
