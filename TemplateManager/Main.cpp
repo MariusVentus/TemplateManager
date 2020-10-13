@@ -222,7 +222,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case ID_TEMPLATE_PRESS:
 			{
 				std::string stringNote = g_Templates.GetTemplateXContent(buttonNum);
-				if (g_Templates.GetTemplateXID(buttonNum) == 0) { //0 is text, 1 is files
+				if (g_Templates.GetTemplateXID(buttonNum) == TemplateType::Text) { 
 					//Copy to Clipboard
 					OpenClipboard(hwnd);
 					EmptyClipboard();
@@ -238,7 +238,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					}
 					GlobalFree(hg);
 				}
-				else if (g_Templates.GetTemplateXID(buttonNum) == 1) {
+				else if (g_Templates.GetTemplateXID(buttonNum) == TemplateType::File) {
 					if (g_Templates.FileExists(stringNote)) {
 						ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
 					}
@@ -622,14 +622,14 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 					if (g_Templates.FindTemplate(titleString)) {
 						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
 							MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
-							g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), 0);
+							g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), TemplateType::Text);
 							g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
 							g_Templates.SaveTemplates();
 							MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
 						}
 					}
 					else {
-						g_Templates.AddTemplate(0, titleString, textString);
+						g_Templates.AddTemplate(TemplateType::Text, titleString, textString);
 						g_Templates.SaveTemplates();
 						MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
 					}
@@ -677,7 +677,7 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?", MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
 							std::string targetPath = "";
 							if (SelectFile(hWnd, targetPath)) {
-								g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), 1);
+								g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), TemplateType::File);
 								g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), targetPath);
 								g_Templates.SaveTemplates();
 								MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
@@ -692,7 +692,7 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 						//Template does not Exist
 						std::string targetPath = "";
 						if (SelectFile(hWnd, targetPath)) {
-							g_Templates.AddTemplate(1, titleString, targetPath);
+							g_Templates.AddTemplate(TemplateType::File, titleString, targetPath);
 							g_Templates.SaveTemplates();
 							MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
 							//Shift Window Size

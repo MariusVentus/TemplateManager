@@ -98,7 +98,7 @@ void TemplateManager::RefreshTemplates(const std::string& inFileLoc)
 					if (in.eof() && tempContent.back() == '\n') {
 						tempContent.pop_back();
 					}
-					m_Templates.push_back(Templates(tempID, tempTitle, tempContent));
+					m_Templates.push_back(Templates(UnsignedToType(tempID), tempTitle, tempContent));
 				}
 			}
 
@@ -106,9 +106,44 @@ void TemplateManager::RefreshTemplates(const std::string& inFileLoc)
 	}
 }
 
+TemplateType TemplateManager::UnsignedToType(unsigned inU) const
+{
+	switch (inU)
+	{
+	case 0:
+		return TemplateType::Text;
+	case 1:
+		return TemplateType::File;
+	case 2:
+		return TemplateType::RichText;
+	default:
+		return TemplateType::Text;
+		break;
+	}
+}
+
+unsigned TemplateManager::TypeToUnsigned(TemplateType inT) const
+{
+	switch (inT)
+	{
+	case TemplateType::Text:
+		return 0;
+		break;
+	case TemplateType::File:
+		return 1;
+		break;
+	case TemplateType::RichText:
+		return 2;
+		break;
+	default:
+		return 0;
+		break;
+	}
+}
+
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
-	if (m_Templates[inX].GetID() == 0) {
+	if (m_Templates[inX].GetID() == TemplateType::Text) {
 		std::string localContent = m_Templates[inX].GetContent();
 		std::string flags[15] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]",
 			"[Time]","[FullTimeNDate]", "[Today]", "[Tomorrow]", "[Yesterday]","[TodayWeekday]", "[TomorrowWeekday]", "[YesterdayWeekday]" };
@@ -196,7 +231,7 @@ std::string TemplateManager::GetTemplateXContentRaw(unsigned inX)
 	return m_Templates[inX].GetContent();
 }
 
-void TemplateManager::OverwriteTemplateID(unsigned tempNum, unsigned inID)
+void TemplateManager::OverwriteTemplateID(unsigned tempNum, TemplateType inID)
 {
 	m_Templates[tempNum].OverwriteID(inID);
 }
@@ -210,7 +245,7 @@ void TemplateManager::OverwriteTemplateContent(unsigned tempNum, const std::stri
 	m_Templates[tempNum].OverwriteContent(outString);
 }
 
-void TemplateManager::AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent)
+void TemplateManager::AddTemplate(const TemplateType inID, const std::string& inTitle, const std::string& inContent)
 {
 	auto outString = inContent;
 	while (outString.find("\r") != std::string::npos) {
@@ -275,7 +310,7 @@ void TemplateManager::SaveTemplates(void) const
 	std::string outString = ";;[Template]TypeID\n;;Title\n;;Content";
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
 		outString.append("\n[Template]");
-		outString.append(std::to_string(m_Templates[i].GetID()));
+		outString.append(std::to_string(TypeToUnsigned(m_Templates[i].GetID())));
 		outString.append("\n");
 		outString.append(m_Templates[i].GetTitle());
 		outString.append("\n");
@@ -338,7 +373,7 @@ bool TemplateManager::SwapDown(unsigned iterator)
 	}
 }
 
-TemplateManager::Templates::Templates(unsigned id, const std::string& title, const std::string& content)
+TemplateManager::Templates::Templates(TemplateType id, const std::string& title, const std::string& content)
 	:
 	m_ID(id),
 	m_Title(title),
@@ -346,7 +381,7 @@ TemplateManager::Templates::Templates(unsigned id, const std::string& title, con
 {
 }
 
-TemplateManager::Templates::Templates(const Templates & other)
+TemplateManager::Templates::Templates(const Templates& other)
 	:
 	m_ID(other.m_ID),
 	m_Title(other.m_Title),

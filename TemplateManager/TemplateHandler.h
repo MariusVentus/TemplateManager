@@ -5,22 +5,30 @@
 #include "SettingsHandler.h"
 #include "TimeClock.h"
 
+enum class TemplateType {
+	Text,
+	File,
+	RichText
+};
+
 class TemplateManager {
 public:
 	TemplateManager(const SettingsHandler& inSet, const TimeClock& inTime);
 private:
 	void RefreshTemplates(void);
 	void RefreshTemplates(const std::string& inFileLoc);
+	TemplateType UnsignedToType(unsigned inU) const;
+	unsigned TypeToUnsigned(TemplateType inT) const;
 public:
-	unsigned GetTemplateXID(unsigned inX) const { return m_Templates[inX].GetID(); }
+	TemplateType GetTemplateXID(unsigned inX) const { return m_Templates[inX].GetID(); }
 	std::string GetTemplateXTitle(unsigned inX) const { return m_Templates[inX].GetTitle(); }
 	std::string GetTemplateXContent(unsigned inX);
 	std::string GetTemplateXContentRaw(unsigned inX);
-	void OverwriteTemplateID(unsigned tempNum, unsigned inID);
+	void OverwriteTemplateID(unsigned tempNum, TemplateType inID);
 	void OverwriteTemplateContent(unsigned tempNum, const std::string inContent);
 	unsigned GetTemplateCount(void) const { return m_Templates.size(); }
 	std::string GetTemplateFileLoc(void) const { return m_TemplateFile; }
-	void AddTemplate(const unsigned inID, const std::string& inTitle, const std::string& inContent);
+	void AddTemplate(const TemplateType inID, const std::string& inTitle, const std::string& inContent);
 	bool FindTemplate(const std::string& inTitle) const;
 	unsigned FindTemplateIterator(const std::string& inTitle) const;
 	bool RemoveTemplate(const std::string& inTitle);
@@ -49,17 +57,17 @@ private:
 
 	class Templates {
 	public:
-		Templates(unsigned id, const std::string& title, const std::string& content);
+		Templates(TemplateType id, const std::string& title, const std::string& content);
 		Templates(const Templates& other);
-		unsigned GetID(void) const { return m_ID; }
+		TemplateType GetID(void) const { return m_ID; }
 		std::string GetTitle(void) const { return m_Title; }
 		std::string GetContent(void) const { return m_Content; }
 
-		void OverwriteID(unsigned ID) { m_ID = ID; }
+		void OverwriteID(TemplateType ID) { m_ID = ID; }
 		void OverwriteContent(const std::string content) { m_Content = content; }
 
 	private:
-		unsigned m_ID; //Repurposing as a TypeID rather than uniue identifier. Not lazy, smrt. 
+		TemplateType m_ID; //Repurposing as a TypeID rather than uniue identifier. Not lazy, smrt. 
 		std::string m_Title;
 		std::string m_Content;
 	};
