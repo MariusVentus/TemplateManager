@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <algorithm>
 #include <direct.h>
 #include <string>
 #include "SettingsHandler.h"
@@ -53,7 +54,8 @@ void OpenEditWindow(HWND hWnd);
 LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 std::string ShowManualText(void);
 void ResetScrollbarSize();
-void RebuildTemplateButtons();
+void RebuildTemplateButtons(void);
+void RebuildTemplateButtons(unsigned x, unsigned y);
 bool SelectFile(HWND hwnd, std::string& path);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -268,13 +270,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case ID_UP_PRESS:
 				if (g_Templates.SwapUp(buttonNum)) {
 					g_Templates.SaveTemplates();
-					RebuildTemplateButtons();
+					RebuildTemplateButtons(buttonNum, buttonNum - 1);
 				}
 				break;
 			case ID_DOWN_PRESS:
 				if (g_Templates.SwapDown(buttonNum)) {
 					g_Templates.SaveTemplates();
-					RebuildTemplateButtons();
+					RebuildTemplateButtons(buttonNum, buttonNum + 1);
 				}
 				break;
 			case ID_EDIT_PRESS:
@@ -751,7 +753,7 @@ void ResetScrollbarSize()
 	SetScrollInfo(hMainWindow, SB_VERT, &si, true);
 }
 
-void RebuildTemplateButtons()
+void RebuildTemplateButtons(void)
 {
 	//Reset Scroll position to avoid issues with button creation. 
 	SCROLLINFO si = { 0 };
@@ -783,6 +785,23 @@ void RebuildTemplateButtons()
 	g_LastCreatedY = 15;
 	AddControls(hMainWindow);
 
+}
+
+void RebuildTemplateButtons(unsigned x, unsigned y)
+{
+	//Destroy the two windows and swap.
+	DestroyWindow(hTemplates[x]);
+	DestroyWindow(hTemplates[y]);
+	hTemplates[x] = { 0 };
+	hTemplates[y] = { 0 };
+	unsigned low = (std::min)(x, y);
+	unsigned localY = 15 + (low * 50);
+	hTemplates[low] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(low).c_str(), WS_CHILD | WS_VISIBLE,
+		30, localY-g_ScrollY, 260, 40, hMainWindow, (HMENU)(ID_TEMPBASE + low), GetModuleHandle(NULL), NULL);
+	unsigned high = (std::max)(x, y);
+	localY += 50;
+	hTemplates[high] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(high).c_str(), WS_CHILD | WS_VISIBLE,
+		30, localY-g_ScrollY, 260, 40, hMainWindow, (HMENU)(ID_TEMPBASE + high), GetModuleHandle(NULL), NULL);
 }
 
 bool SelectFile(HWND hwnd, std::string& path)
