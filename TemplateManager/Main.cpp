@@ -14,6 +14,10 @@
 #define ID_MANUAL 9007
 #define ID_CLEAR_TEMPLATES 9008
 #define ID_RESTORE_DEFAULT_TEMPLATES 9009
+#define ID_TEMPLATE_PRESS 9010
+#define ID_UP_PRESS 9011
+#define ID_DOWN_PRESS 9012
+#define ID_EDIT_PRESS 9013
 #define ID_IN_PROGRESS 9020
 #define ID_TEMPBASE 9050 //Nothing above this.
 
@@ -28,6 +32,7 @@ HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
 TimeClock g_Timer;
 TemplateManager g_Templates(g_Settings, g_Timer);
 std::vector<HWND> hTemplates, hUp, hDown, hEdit;
+HWND hCreateNew;
 RECT g_MainWin;
 HWND hAddTemplateTitle, hAddTemplateText, hRemoveTemplateTitle;
 int g_ScrollY = 0;
@@ -80,8 +85,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 bool CreateMainWindow(HINSTANCE hInstance)
 {
-
-
 	hMainWindow = CreateWindowEx(WS_EX_CLIENTEDGE, g_szClassName, g_WindowTitle, WS_OVERLAPPEDWINDOW | WS_VSCROLL,
 		GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), NULL, NULL, hInstance, NULL);
 
@@ -127,7 +130,7 @@ bool RegisterMainWindow(HINSTANCE hInstance) {
 
 unsigned ApproximateWindowHeight()
 {
-	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 1) * 50) + 30;
+	unsigned approxWinHeight = ((g_Templates.GetTemplateCount() + 2) * 50) + 30;
 	unsigned screenY = GetSystemMetrics(SM_CYSCREEN) - 50;
 	//Max
 	if (approxWinHeight > screenY) {
@@ -151,22 +154,44 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			AddControls(hwnd);
 			break;
 		case WM_COMMAND:
-			if (wParam == ID_FILE_EXIT) {
+		{
+			unsigned buttonNum = 0;
+			if (wParam >= ID_TEMPBASE) {
+				buttonNum = wParam - ID_TEMPBASE;
+				if (buttonNum < g_Templates.GetTemplateCount()) {
+					wParam = ID_TEMPLATE_PRESS;
+				}
+				else if (buttonNum < 2 * g_Templates.GetTemplateCount()) {
+					wParam = ID_UP_PRESS;
+					buttonNum = buttonNum - g_Templates.GetTemplateCount();
+				}
+				else if (buttonNum < 3 * g_Templates.GetTemplateCount()) {
+					wParam = ID_DOWN_PRESS;
+					buttonNum = buttonNum - (2 * g_Templates.GetTemplateCount());
+				}
+				else if (buttonNum < 4 * g_Templates.GetTemplateCount()) {
+					wParam = ID_EDIT_PRESS;
+					buttonNum = buttonNum - (3 * g_Templates.GetTemplateCount());
+				}
+			}
+			switch (wParam)
+			{
+			case ID_FILE_EXIT:
 				PostQuitMessage(0);
-			}
-			else if (wParam == ID_ABOUT) {
+				break;
+			case ID_ABOUT:
 				MessageBox(NULL, "Just a quick template manager to copy templates on a button press.\n\n-Marius Ventus", "About", MB_OK | MB_ICONINFORMATION);
-			}
-			else if (wParam == ID_HELP) {
-				MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
-			}
-			else if (wParam == ID_OPEN_SETTINGS) {
+				break;
+			case ID_HELP:
+				MessageBox(NULL, "No help, only Zuul.\nOr reaching me on Teams.\nOr the instructions in the application folder.\n\nOr the Readme:\nhttps://github.com/MariusVentus", "Halp", MB_OK | MB_ICONINFORMATION);
+				break;
+			case ID_OPEN_SETTINGS:
 				OpenSettingsWindow(hwnd);
-			}
-			else if (wParam == ID_EDIT_TEMPLATES) {
+				break;
+			case ID_EDIT_TEMPLATES:
 				OpenEditWindow(hwnd);
-			}
-			else if (wParam == ID_CLEAR_TEMPLATES) {
+				break;
+			case ID_CLEAR_TEMPLATES:
 				if (MessageBox(hwnd, "This will delete all current templates permenantly?\nAre sure you want to do this?", "Warning",
 					MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
 					g_Templates.ClearAllTemplates();
@@ -177,8 +202,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					RebuildTemplateButtons();
 					ResetScrollbarSize();
 				}
-			}
-			else if (wParam == ID_RESTORE_DEFAULT_TEMPLATES) {
+				break;
+			case ID_RESTORE_DEFAULT_TEMPLATES:
 				if (MessageBox(hwnd, "This will overwrite all current templates?\nAre sure you want to do this?", "Warning",
 					MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
 					g_Templates.ResetToDefaultTemplates();
@@ -187,17 +212,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					RebuildTemplateButtons();
 					ResetScrollbarSize();
 				}
-			}
-			else if (wParam == ID_IN_PROGRESS) {
+				break;
+			case ID_IN_PROGRESS:
 				MessageBox(NULL, "Apologies, this feature is under construction.", "Under Construction", MB_OK | MB_ICONEXCLAMATION);
-			}
-			else if (wParam == ID_MANUAL) {
+				break;
+			case ID_MANUAL:
 				MessageBox(NULL, ShowManualText().c_str(), "Manual", MB_OK | MB_ICONEXCLAMATION);
-			}
-			else if (wParam >= ID_TEMPBASE && wParam < ID_TEMPBASE + g_Templates.GetTemplateCount()) {
-				unsigned butNum = wParam - ID_TEMPBASE;
-				std::string stringNote = g_Templates.GetTemplateXContent(butNum);
-				if (g_Templates.GetTemplateXID(butNum) == 0) { //0 is text, 1 is files
+				break;
+			case ID_TEMPLATE_PRESS:
+			{
+				std::string stringNote = g_Templates.GetTemplateXContent(buttonNum);
+				if (g_Templates.GetTemplateXID(buttonNum) == 0) { //0 is text, 1 is files
 					//Copy to Clipboard
 					OpenClipboard(hwnd);
 					EmptyClipboard();
@@ -213,7 +238,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					}
 					GlobalFree(hg);
 				}
-				else if (g_Templates.GetTemplateXID(butNum) == 1) {
+				else if (g_Templates.GetTemplateXID(buttonNum) == 1) {
 					if (g_Templates.FileExists(stringNote)) {
 						ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
 					}
@@ -239,22 +264,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					MessageBox(NULL, "Damaged or Unknown Template TypeID. Copied entry to Clipboard as Text.", "Template Error", MB_OK | MB_ICONERROR);
 				}
 			}
-			else if (wParam >= ID_TEMPBASE + g_Templates.GetTemplateCount() && wParam < ID_TEMPBASE + (2*g_Templates.GetTemplateCount())) {
-				unsigned butNum = wParam - ID_TEMPBASE - g_Templates.GetTemplateCount();
-				if (g_Templates.SwapUp(butNum)) {
+				break;
+			case ID_UP_PRESS:
+				if (g_Templates.SwapUp(buttonNum)) {
 					g_Templates.SaveTemplates();
 					RebuildTemplateButtons();
 				}
-			}
-			else if (wParam >= ID_TEMPBASE + (2 * g_Templates.GetTemplateCount()) && wParam < ID_TEMPBASE + (3 * g_Templates.GetTemplateCount())) {
-				unsigned butNum = wParam - ID_TEMPBASE - (2*g_Templates.GetTemplateCount());
-				if (g_Templates.SwapDown(butNum)) {
+				break;
+			case ID_DOWN_PRESS:
+				if (g_Templates.SwapDown(buttonNum)) {
 					g_Templates.SaveTemplates();
 					RebuildTemplateButtons();
 				}
+				break;
+			case ID_EDIT_PRESS:
+				OpenEditWindow(hwnd);
+				SetWindowText(hAddTemplateTitle, g_Templates.GetTemplateXTitle(buttonNum).c_str());
+				SetWindowText(hAddTemplateText, g_Templates.GetTemplateXContentRaw(buttonNum).c_str());
+				break;
+			default:
+				break;
 			}
+		}
 			break;
-
 		case WM_VSCROLL:
 		{
 			auto action = LOWORD(wParam);
@@ -372,6 +404,7 @@ void AddControls(HWND hwnd)
 		hDown.push_back({ 0 });
 		hEdit.push_back({ 0 });
 	}
+	hCreateNew = { 0 };
 
 	for (unsigned i = 0; i < g_Templates.GetTemplateCount(); i++) {
 		hTemplates[i] = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", g_Templates.GetTemplateXTitle(i).c_str(), WS_CHILD | WS_VISIBLE,
@@ -384,6 +417,9 @@ void AddControls(HWND hwnd)
 			290, g_LastCreatedY, 20, 40, hwnd, (HMENU)(ID_TEMPBASE + (3 * g_Templates.GetTemplateCount()) + i), GetModuleHandle(NULL), NULL);
 		g_LastCreatedY += 50;
 	}
+	hCreateNew = CreateWindowEx(WS_EX_CLIENTEDGE, "Button", "Create New!", WS_CHILD | WS_VISIBLE,
+		30, g_LastCreatedY, 260, 40, hwnd, (HMENU)(ID_EDIT_TEMPLATES), GetModuleHandle(NULL), NULL);
+	g_LastCreatedY += 50;
 }
 
 void RegisterSettingsWindow(HINSTANCE hInst) {
@@ -735,6 +771,7 @@ void RebuildTemplateButtons()
 		DestroyWindow(hDown[i]);
 		DestroyWindow(hEdit[i]);
 	}
+	DestroyWindow(hCreateNew);
 
 	//Clear all window Templates
 	hTemplates.clear();

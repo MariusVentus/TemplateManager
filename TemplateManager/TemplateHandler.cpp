@@ -191,6 +191,11 @@ std::string TemplateManager::GetTemplateXContent(unsigned inX)
 	}
 }
 
+std::string TemplateManager::GetTemplateXContentRaw(unsigned inX)
+{
+	return m_Templates[inX].GetContent();
+}
+
 void TemplateManager::OverwriteTemplateID(unsigned tempNum, unsigned inID)
 {
 	m_Templates[tempNum].OverwriteID(inID);

@@ -15,6 +15,7 @@ public:
 	unsigned GetTemplateXID(unsigned inX) const { return m_Templates[inX].GetID(); }
 	std::string GetTemplateXTitle(unsigned inX) const { return m_Templates[inX].GetTitle(); }
 	std::string GetTemplateXContent(unsigned inX);
+	std::string GetTemplateXContentRaw(unsigned inX);
 	void OverwriteTemplateID(unsigned tempNum, unsigned inID);
 	void OverwriteTemplateContent(unsigned tempNum, const std::string inContent);
 	unsigned GetTemplateCount(void) const { return m_Templates.size(); }
