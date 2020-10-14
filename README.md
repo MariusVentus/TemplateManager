@@ -21,6 +21,8 @@ V0.0.6 - Improved error handling, ability to add "File" Templates, which execute
 
 V0.0.7 - Swap Buttons! Alter the position of templates in the list! Also, quick Bug Fix for "File" Template creation, and added a safety check for execution. Demo and Alpha!
 
+V0.0.8 - Rich Text Features enabled! Added Template Edit Buttons, an easy to select "Create New!" button, an instruction manual, and multiple improvements to the code's efficiency!
+
 ***Planned Features (Warning: Doing this for fun in my free time. Updates will be slow, if at all)***
 
 1.) Improved code (As always, this is just a quick project, so main.cpp is spaghetti)

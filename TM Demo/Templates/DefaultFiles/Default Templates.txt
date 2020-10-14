@@ -54,3 +54,15 @@ Full Date and Time
 [Template]1
 Fake Email
 Templates\DefaultFiles\FakeEmail.docx
+[Template]2
+Rich Text Example
+{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fprq2\fcharset0 Arial;}{\f1\fswiss\fprq2\fcharset0 Calibri;}{\f2\froman\fprq2\fcharset0 Dauphin;}{\f3\fswiss\fprq2\fcharset0 System;}}
+{\colortbl ;\red255\green255\blue0;\red255\green0\blue0;\red0\green255\blue0;}
+\viewkind4\uc1\pard\f0\fs25 This is a test.\par
+This is a \highlight1 highlight\highlight0  test. \par
+This is a \b bold\b0  and \i italic\i0  and \ul underline\ulnone  test.\par
+This is a \cf2 colored\cf0  text test. \par
+This is a \cf2\highlight3\b\i combination\cf0\highlight0\b0\i0  test. \par
+This is a \f1 font\f0  test. This is a \f2 custom\f0  font.\par
+This concludes the test!\b\f3\fs20\par
+}

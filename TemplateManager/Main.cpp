@@ -28,7 +28,7 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.7";
+const char g_WindowTitle[] = "Template Manager V0.0.8";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
