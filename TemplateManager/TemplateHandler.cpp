@@ -18,7 +18,7 @@ void TemplateManager::RefreshTemplates(const std::string& inFileLoc)
 {
 	m_Templates.clear();
 
-	std::ifstream in(inFileLoc);
+	std::ifstream in(inFileLoc, std::ifstream::in | std::ifstream::binary);
 	if (in) {
 		std::string token = "";
 
@@ -306,7 +306,7 @@ bool TemplateManager::RemoveTemplate(const std::string& inTitle)
 
 void TemplateManager::SaveTemplates(void) const
 {
-	std::ofstream out(m_TemplateFile, std::ofstream::trunc);
+	std::ofstream out(m_TemplateFile, std::ofstream::out | std::ofstream::trunc | std::ofstream::binary);
 	std::string outString = ";;[Template]TypeID\n;;Title\n;;Content";
 	for (unsigned i = 0; i < m_Templates.size(); i++) {
 		outString.append("\n[Template]");

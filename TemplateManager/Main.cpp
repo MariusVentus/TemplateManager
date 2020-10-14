@@ -1,7 +1,9 @@
 #include <windows.h>
 #include <algorithm>
 #include <direct.h>
+#include <Richedit.h>
 #include <string>
+#include <sstream>
 #include "SettingsHandler.h"
 #include "TimeClock.h"
 #include "TemplateHandler.h"
@@ -57,10 +59,13 @@ void ResetScrollbarSize();
 void RebuildTemplateButtons(void);
 void RebuildTemplateButtons(unsigned x, unsigned y);
 bool SelectFile(HWND hwnd, std::string& path);
+DWORD CALLBACK EditStreamOutCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG *pcb);
+DWORD CALLBACK EditStreamInCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG *pcb);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
+	LoadLibrary("Riched20.dll");
 	MSG Msg;
 
 	if (!RegisterMainWindow(hInstance)) {
@@ -224,7 +229,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case ID_TEMPLATE_PRESS:
 			{
 				std::string stringNote = g_Templates.GetTemplateXContent(buttonNum);
-				if (g_Templates.GetTemplateXID(buttonNum) == TemplateType::Text) { 
+				switch (g_Templates.GetTemplateXID(buttonNum))
+				{
+				case TemplateType::Text:
+				{
 					//Copy to Clipboard
 					OpenClipboard(hwnd);
 					EmptyClipboard();
@@ -240,7 +248,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					}
 					GlobalFree(hg);
 				}
-				else if (g_Templates.GetTemplateXID(buttonNum) == TemplateType::File) {
+					break;
+				case TemplateType::File:
+				{
 					if (g_Templates.FileExists(stringNote)) {
 						ShellExecute(hwnd, "open", stringNote.c_str(), NULL, NULL, SW_SHOW);
 					}
@@ -248,7 +258,48 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						MessageBox(NULL, "Template Error: File Not Found.\n\nThe file is no longer present at the original location, or the filepath is no longer valid.", "Template Error: File Not Found", MB_OK | MB_ICONERROR);
 					}
 				}
-				else {
+					break;
+				case TemplateType::RichText:
+				{
+					//This is the most stupid RTF to text converter ever. Hold my beer. First, create an invisibile temporary window.
+					HWND textConvert = CreateWindowEx(NULL, RICHEDIT_CLASS, "WHERE ARE YOU?", WS_VISIBLE | WS_CHILD | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE,
+						0, 0, 100, 100, hMainWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+					{
+						std::stringstream rtf(stringNote);
+						EDITSTREAM es = { 0 };
+						es.dwCookie = (DWORD_PTR)&rtf;
+						es.pfnCallback = &EditStreamInCallback;
+						SendMessage(textConvert, EM_STREAMIN, SF_RTF, (LPARAM)&es);
+					}
+					//Then, Get Raw Text
+					std::string textString = "";
+					char text[5000] = "";
+					GetWindowText(textConvert, text, 5000);
+					textString = text;
+					//Copy to Clipboard
+					OpenClipboard(hwnd);
+					EmptyClipboard();
+					HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, stringNote.size() + 1);
+					HGLOBAL hg2 = GlobalAlloc(GMEM_MOVEABLE, textString.size() + 1);
+					if (!hg || !hg2) {
+						CloseClipboard();
+					}
+					else {
+						memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
+						memcpy(GlobalLock(hg2), textString.c_str(), textString.size() + 1);
+						GlobalUnlock(hg);
+						//SetClipboardData(CF_TEXT, hg);
+						SetClipboardData(RegisterClipboardFormat(CF_RTF), hg);
+						SetClipboardData(CF_TEXT, hg2);
+						CloseClipboard();
+					}
+					GlobalFree(hg);
+					GlobalFree(hg2);
+					DestroyWindow(textConvert);
+				}
+					break;
+				default:
+				{
 					//Copy to Clipboard
 					OpenClipboard(hwnd);
 					EmptyClipboard();
@@ -264,6 +315,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					}
 					GlobalFree(hg);
 					MessageBox(NULL, "Damaged or Unknown Template TypeID. Copied entry to Clipboard as Text.", "Template Error", MB_OK | MB_ICONERROR);
+				}
+					break;
+					//End Switch
 				}
 			}
 				break;
@@ -564,7 +618,7 @@ void OpenEditWindow(HWND hWnd) {
 
 	GetWindowRect(hMainWindow, &g_MainWin);
 
-	HWND hEditWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "myEditWindow", "Edit Templates", WS_VISIBLE | WS_OVERLAPPEDWINDOW, g_MainWin.left-200, g_MainWin.top, 500, 525, hWnd, NULL, NULL, NULL);
+	HWND hEditWindow = CreateWindowEx(WS_EX_CLIENTEDGE, "myEditWindow", "Edit Templates", WS_VISIBLE | WS_OVERLAPPEDWINDOW, g_MainWin.left-200, g_MainWin.top, 500, 550, hWnd, NULL, NULL, NULL);
 	if (hEditWindow == NULL)
 	{
 		MessageBox(NULL, "Window Creation Failed!", "Error!",
@@ -579,20 +633,22 @@ void OpenEditWindow(HWND hWnd) {
 
 	CreateWindowEx(NULL, "STATIC", "Template Text", WS_CHILD | WS_VISIBLE,
 		20, 60, 440, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
-	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, RICHEDIT_CLASS, "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
 		20, 85, 440, 200, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 
-	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add Text", WS_VISIBLE | WS_CHILD, 360, 300, 100, 40, hEditWindow, (HMENU)1, NULL, NULL);
-	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add File", WS_VISIBLE | WS_CHILD, 260, 300, 100, 40, hEditWindow, (HMENU)4, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add Plain Text", WS_VISIBLE | WS_CHILD, 170, 300, 140, 40, hEditWindow, (HMENU)1, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add File", WS_VISIBLE | WS_CHILD, 30, 300, 140, 40, hEditWindow, (HMENU)4, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add Formatted Text", WS_VISIBLE | WS_CHILD, 310, 300, 140, 40, hEditWindow, (HMENU)5, NULL, NULL);
+
 
 	CreateWindowEx(NULL, "STATIC", "Template for Removal (Button Text)", WS_CHILD | WS_VISIBLE,
-		20, 325, 230, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
+		20, 345, 230, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
 	hRemoveTemplateTitle = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "", WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-		20, 350, 440, 25, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+		20, 370, 440, 25, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 
 
-	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Remove", WS_VISIBLE | WS_CHILD, 360, 385, 100, 40, hEditWindow, (HMENU)2, NULL, NULL);
-	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Close", WS_VISIBLE | WS_CHILD, 360, 435, 100, 40, hEditWindow, (HMENU)3, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Remove", WS_VISIBLE | WS_CHILD, 310, 405, 140, 40, hEditWindow, (HMENU)2, NULL, NULL);
+	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Close", WS_VISIBLE | WS_CHILD, 310, 455, 140, 40, hEditWindow, (HMENU)3, NULL, NULL);
 
 	//Disable the main window, turning a Modless dialogue box into a modal dialogue
 	EnableWindow(hWnd, false);
@@ -628,18 +684,23 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 							g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
 							g_Templates.SaveTemplates();
 							MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+							//Shift Window Size
+							SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+							//New Button
+							RebuildTemplateButtons();
+							ResetScrollbarSize();
 						}
 					}
 					else {
 						g_Templates.AddTemplate(TemplateType::Text, titleString, textString);
 						g_Templates.SaveTemplates();
 						MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+						//Shift Window Size
+						SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+						//New Button
+						RebuildTemplateButtons();
+						ResetScrollbarSize();
 					}
-					//Shift Window Size
-					SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
-					//New Button
-					RebuildTemplateButtons();
-					ResetScrollbarSize();
 				}
 				else {
 					MessageBox(NULL, "No template title or content detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -703,6 +764,49 @@ LRESULT CALLBACK EditWinProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 							ResetScrollbarSize();
 						}
 					}
+				}
+				else {
+					MessageBox(NULL, "No template title detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
+				}
+				break;
+			case 5:
+				GetWindowText(hAddTemplateTitle, title, 100);
+				titleString = title;
+				//Grab RTF Data from Window
+				{
+					std::stringstream rtf;
+					EDITSTREAM es = { 0 };
+					es.dwCookie = (DWORD_PTR)&rtf;
+					es.pfnCallback = &EditStreamOutCallback;
+					SendMessage(hAddTemplateText, EM_STREAMOUT, SF_RTF, (LPARAM)&es);
+					textString = rtf.str();
+				}
+				if (!titleString.empty()) {
+					if (g_Templates.FindTemplate(titleString)) {
+						//Template Does Exist
+						if (MessageBox(hWnd, "Template already exists.\nOverwrite?", "Overwrite?",
+							MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+							g_Templates.OverwriteTemplateID(g_Templates.FindTemplateIterator(titleString), TemplateType::RichText);
+							g_Templates.OverwriteTemplateContent(g_Templates.FindTemplateIterator(titleString), textString);
+							g_Templates.SaveTemplates();
+							MessageBox(NULL, "Overwritten!", "Overwritten!", MB_OK | MB_ICONEXCLAMATION);
+							//Shift Window Size
+							SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+							RebuildTemplateButtons();
+							ResetScrollbarSize();
+						}
+					}
+					else {
+						//Template Does Not Exist
+						g_Templates.AddTemplate(TemplateType::RichText, titleString, textString);
+						g_Templates.SaveTemplates();
+						MessageBox(NULL, "Added Template!", "Added!", MB_OK | MB_ICONEXCLAMATION);
+						//Shift Window Size
+						SetWindowPos(hMainWindow, HWND_BOTTOM, GetSystemMetrics(SM_CXSCREEN) - 350, 0, 350, ApproximateWindowHeight(), SWP_NOMOVE | SWP_NOZORDER);
+						RebuildTemplateButtons();
+						ResetScrollbarSize();
+					}
+
 				}
 				else {
 					MessageBox(NULL, "No template title detected!", "Error!", MB_ICONEXCLAMATION | MB_OK);
@@ -832,4 +936,19 @@ bool SelectFile(HWND hwnd, std::string& path)
 	//buffer = _getcwd(NULL, 0);
 	free(buffer);
 	return fileSelected;
+}
+
+DWORD CALLBACK EditStreamOutCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG *pcb)
+{
+	std::stringstream *rtf = (std::stringstream*) dwCookie;
+	rtf->write((char*)pbBuff, cb);
+	*pcb = cb;
+	return 0;
+}
+
+DWORD CALLBACK EditStreamInCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG *pcb)
+{
+	std::stringstream *rtf = (std::stringstream*) dwCookie;
+	*pcb = static_cast<LONG>(rtf->readsome((char*)pbBuff, cb));
+	return 0;
 }
