@@ -143,7 +143,7 @@ unsigned TemplateManager::TypeToUnsigned(TemplateType inT) const
 
 std::string TemplateManager::GetTemplateXContent(unsigned inX)
 {
-	if (m_Templates[inX].GetID() == TemplateType::Text) {
+	if (m_Templates[inX].GetID() != TemplateType::File) {
 		std::string localContent = m_Templates[inX].GetContent();
 		std::string flags[15] = { "[Date]","[RandomPercentage]","[Name]","[Email]","[Misc1]","[Misc2]","[Misc3]",
 			"[Time]","[FullTimeNDate]", "[Today]", "[Tomorrow]", "[Yesterday]","[TodayWeekday]", "[TomorrowWeekday]", "[YesterdayWeekday]" };
