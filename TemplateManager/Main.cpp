@@ -262,8 +262,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				case TemplateType::RichText:
 				{
 					//This is the most stupid RTF to text converter ever. Hold my beer. First, create an invisibile temporary window.
-					HWND textConvert = CreateWindowEx(NULL, RICHEDIT_CLASS, "WHERE ARE YOU?", WS_VISIBLE | WS_CHILD | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE,
-						0, 0, 100, 100, hMainWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
+					HWND textConvert = CreateWindowEx(NULL, RICHEDIT_CLASS, "WHERE ARE YOU?", WS_CHILD | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE,
+						0, 0, 0, 0, hMainWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 					{
 						std::stringstream rtf(stringNote);
 						EDITSTREAM es = { 0 };
@@ -288,6 +288,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						memcpy(GlobalLock(hg), stringNote.c_str(), stringNote.size() + 1);
 						memcpy(GlobalLock(hg2), textString.c_str(), textString.size() + 1);
 						GlobalUnlock(hg);
+						GlobalUnlock(hg2);
 						//SetClipboardData(CF_TEXT, hg);
 						SetClipboardData(RegisterClipboardFormat(CF_RTF), hg);
 						SetClipboardData(CF_TEXT, hg2);
