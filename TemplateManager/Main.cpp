@@ -28,7 +28,7 @@
 //Global Entities
 HWND hMainWindow = { 0 };
 const char g_szClassName[] = "myMainWindow";
-const char g_WindowTitle[] = "Template Manager V0.0.8";
+const char g_WindowTitle[] = "Template Manager V0.0.81";
 unsigned g_LastCreatedY = 15;
 SettingsHandler g_Settings;
 HWND hName, hEmail, hMisc1, hMisc2, hMisc3;
@@ -65,7 +65,7 @@ DWORD CALLBACK EditStreamInCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	LPSTR lpCmdLine, int nCmdShow)
 {
-	LoadLibrary("Riched20.dll");
+	LoadLibrary("Msftedit.dll");
 	MSG Msg;
 
 	if (!RegisterMainWindow(hInstance)) {
@@ -262,7 +262,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				case TemplateType::RichText:
 				{
 					//This is the most stupid RTF to text converter ever. Hold my beer. First, create an invisibile temporary window.
-					HWND textConvert = CreateWindowEx(NULL, RICHEDIT_CLASS, "WHERE ARE YOU?", WS_CHILD | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE,
+					HWND textConvert = CreateWindowEx(NULL, "RichEdit50W", "WHERE ARE YOU?", WS_CHILD | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE,
 						0, 0, 0, 0, hMainWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 					{
 						std::stringstream rtf(stringNote);
@@ -337,7 +337,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case ID_EDIT_PRESS:
 				OpenEditWindow(hwnd);
 				SetWindowText(hAddTemplateTitle, g_Templates.GetTemplateXTitle(buttonNum).c_str());
-				SetWindowText(hAddTemplateText, g_Templates.GetTemplateXContentRaw(buttonNum).c_str());
+				if (g_Templates.GetTemplateXID(buttonNum) != TemplateType::RichText) {
+					SetWindowText(hAddTemplateText, g_Templates.GetTemplateXContentRaw(buttonNum).c_str());
+				}
+				else {
+
+					std::stringstream rtf(g_Templates.GetTemplateXContentRaw(buttonNum));
+					EDITSTREAM es = { 0 };
+					es.dwCookie = (DWORD_PTR)&rtf;
+					es.pfnCallback = &EditStreamInCallback;
+					SendMessage(hAddTemplateText, EM_STREAMIN, SF_RTF, (LPARAM)&es);
+
+				}
 				break;
 			default:
 				break;
@@ -634,7 +645,7 @@ void OpenEditWindow(HWND hWnd) {
 
 	CreateWindowEx(NULL, "STATIC", "Template Text", WS_CHILD | WS_VISIBLE,
 		20, 60, 440, 25, hEditWindow, NULL, GetModuleHandle(NULL), NULL);
-	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, RICHEDIT_CLASS, "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
+	hAddTemplateText = CreateWindowEx(WS_EX_CLIENTEDGE, "RichEdit50W", "", WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL,
 		20, 85, 440, 200, hEditWindow, (HMENU)IDC_MAIN_EDIT, GetModuleHandle(NULL), NULL);
 
 	CreateWindowEx(WS_EX_CLIENTEDGE, "button", "Add Plain Text", WS_VISIBLE | WS_CHILD, 170, 300, 140, 40, hEditWindow, (HMENU)1, NULL, NULL);
